@@ -366,8 +366,7 @@ local function SaveNavPos(pos)
 end
 
 local function ClearByHand()
-    local placed = ns.placedWaypoint
-    local details = ns.JourneyDetails and ns.JourneyDetails() or placed and placed.details
+    local _, _, _, _, _, details = Target(C_SuperTrack.GetHighestPrioritySuperTrackingType())
     if type(details) == "table" and details.guide == true then
         ns.DismissGuideWaypoint(details)
     else

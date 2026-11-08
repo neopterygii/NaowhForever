@@ -7,8 +7,10 @@ local MINOR = 1
 local PERCENT = 100
 local SAME_SPOT = 0.05
 local TEXT_GUIDE = ns.L("Guide destination")
+local PIN_OPTIONS = { pin = true, shows = false }
+local SHOWN_OPTIONS = { pin = true, shows = true }
 
-local settingsHooked, dismissHooked, following, active
+local settingsHooked, dismissHooked, following, showing, active
 local events
 local last, details
 local OnSetting, OnEvent
@@ -74,26 +76,25 @@ local function Sync()
         end
         return
     end
-    details = { guide = true, quest = quest, title = title }
-    if not ns.SetGuideWaypoint(title, map, x, y, details) then Stop() return end
+    local replacement = { guide = true, quest = quest, title = title }
+    if not ns.SetGuideWaypoint(title, map, x, y, replacement) then Stop() return end
+    details = replacement
     last = { map = map, x = x, y = y, title = title }
 end
 
-local function Options()
-    return { pin = true, shows = ns.QoLSettings.Get("waypointNav") and true or false }
-end
-
 local function Follow()
-    if following then return true end
+    local shows = ns.QoLSettings.Get("waypointNav") and true or false
+    if following and showing == shows then return true end
     local A = API()
     if not (A and IsLoggedIn()) then return false end
-    following = A.Follow(OWNER, Sync, Options()) and true or false
+    following = A.Follow(OWNER, Sync, shows and SHOWN_OPTIONS or PIN_OPTIONS) and true or false
+    showing = shows
     return following
 end
 
 local function Unfollow()
     if not following then return end
-    following = false
+    following, showing = false, nil
     local A = API()
     if A and A.Unfollow then A.Unfollow(OWNER) end
 end
@@ -146,8 +147,7 @@ function OnSetting(key)
         last = nil
         Sync()
     elseif key == "waypointNav" and following then
-        local A = API()
-        if A then A.Follow(OWNER, Sync, Options()) end
+        Follow()
     end
 end
 

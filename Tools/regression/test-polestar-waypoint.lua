@@ -27,10 +27,14 @@ end
 
 -- Polestar's public API, minor 1: one target, followers called by hand (Polestar calls them the next frame).
 local target
-local followed, dismissed = {}, 0
+local followed, dismissed, followCalls = {}, 0, 0
 local api = { version = 1, minor = 1 }
 function api.Target() return target end
-function api.Follow(owner, fn, opts) followed[owner] = { fn = fn, opts = opts }; return true end
+function api.Follow(owner, fn, opts)
+    followCalls = followCalls + 1
+    followed[owner] = { fn = fn, opts = opts }
+    return true
+end
 function api.Unfollow(owner) local was = followed[owner] ~= nil; followed[owner] = nil; return was end
 function api.Dismiss(owner) if followed[owner] then dismissed = dismissed + 1; target = nil; return true end return false end
 local function Tell() for _, f in pairs(followed) do f.fn() end end
@@ -83,6 +87,18 @@ Check(followed.NaowhForever.opts.pin and not followed.NaowhForever.opts.shows,
     "Navigator Bar off: Polestar is told the target is not shown, so its arrow stays")
 S.Set("waypointNav", true)
 Check(followed.NaowhForever.opts.shows, "and on again: shown")
+local callsBeforeProfile = followCalls
+settings.waypointNav = false
+ns.Apply()
+Check(followed.NaowhForever.opts.pin and not followed.NaowhForever.opts.shows,
+    "a profile with Navigator Bar off refreshes the existing follower")
+settings.waypointNav = true
+ns.Apply()
+Check(followed.NaowhForever.opts.pin and followed.NaowhForever.opts.shows,
+    "a profile with Navigator Bar on refreshes the existing follower")
+Check(followCalls == callsBeforeProfile + 2, "each changed profile updates the follower once")
+ns.Apply()
+Check(followCalls == callsBeforeProfile + 2, "an unchanged profile does not follow again")
 
 target = { map = 1429, x = 0.4, y = 0.6, title = "|cffffd100Kill|r Kobold Vermin", kind = "kill", quest = 7 }
 Tell()
@@ -163,4 +179,56 @@ Check(current == nil and followed.NaowhForever == nil and frames[1].events.PLAYE
 Fire("PLAYER_LOGIN")
 Check(next(frames[1].events) == nil, "and after login it stops waiting for one")
 Check(setHooks == 1, "one settings hook, however often it is turned on")
+
+-- Exercise failed replacement against the real core's map check and identity-based cleanup.
+env.CreateFromMixins = function() return {} end
+env.MapCanvasPinMixin = {}
+env.UiMapPoint = { CreateFromCoordinates = function(map, x, y)
+    return { uiMapID = map, position = { x = x, y = y } }
+end }
+env.C_Map = {
+    CanSetUserWaypointOnMap = function(map) return map ~= 0 end,
+    SetUserWaypoint = function(point) current = point end,
+    GetUserWaypoint = function() return current end,
+    ClearUserWaypoint = function() current = nil end,
+}
+env.C_SuperTrack = {
+    IsSuperTrackingUserWaypoint = function() return tracking end,
+    SetSuperTrackedUserWaypoint = function(on) tracking = on end,
+    ClearAllSuperTracked = function() tracking = false end,
+}
+local core = assert(loadfile("Core/Waypoint.lua")); setfenv(core, env); core()
+env.Polestar = { Nav = { API = api } }
+target = { map = 1429, x = 0.4, y = 0.6, title = "Before unsupported map" }
+ns.Apply()
+Check(current and ns.placedWaypoint.details.guide, "real core: a guide pin exists before replacement")
+local previousDetails = ns.placedWaypoint.details
+local clearToken, coreClear = nil, ns.ClearGuideWaypoint
+ns.ClearGuideWaypoint = function(d) clearToken = d; return coreClear(d) end
+target = { map = 0, x = 0.5, y = 0.5, title = "Unsupported map" }
+Tell()
+Check(clearToken == previousDetails and current == nil,
+    "failed replacement clears the previous real pin with its original ownership token")
+S.Set("waypointPolestar", false)
+Check(current == nil and followed.NaowhForever == nil, "disabling after failed replacement leaves no old pin")
+
+local journeyDetails
+ns.JourneyDetails = function() return journeyDetails end
+ns.JourneyCancel = function() journeyDetails = nil end
+ns.JourneyTo = function(title, stops, _, d)
+    journeyDetails = d
+    ns.ShowJourneyStep(title, stops[1][2], stops[1][3], stops[1][4], nil, nil, d)
+    return true
+end
+target = { map = 1429, x = 0.3, y = 0.4, title = "Journey before unsupported map" }
+S.Set("waypointPolestar", true)
+Check(current and journeyDetails == ns.placedWaypoint.details, "real core: a guide journey owns its step")
+previousDetails = journeyDetails
+target = { map = 0, x = 0.5, y = 0.5, title = "Unsupported journey replacement" }
+Tell()
+Check(clearToken == previousDetails and journeyDetails == nil and current == nil,
+    "failed replacement cancels the previous journey and clears its step with the original token")
+S.Set("waypointPolestar", false)
+Check(journeyDetails == nil and current == nil and followed.NaowhForever == nil,
+    "disabling after failed replacement leaves no old journey or pin")
 print(("test-polestar-waypoint: %d checks passed"):format(checks))

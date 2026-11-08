@@ -5,7 +5,6 @@ local Market = ns.Market
 local C = Market.C
 
 local STORE = "marketHistory"
-local REALM_JOIN = "-"
 local PERCENT = 100
 
 local History = {}
@@ -23,7 +22,7 @@ local function House(create)
         all = {}
         account[STORE] = all
     end
-    local key = GetRealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
+    local key = Market.HouseKey()
     local house = all[key]
     if not house and create then
         house = { days = {} }

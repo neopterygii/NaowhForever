@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local F = ns.FEATURES.market
+local REALM_JOIN = "-"
 
 local S = ns.UI.ModuleSettings("market", { enabled = F.enabled, duration = 1, postKeys = true, bagWorth = true,
     tooltip = true })
@@ -12,4 +13,8 @@ ns.Market = Market
 
 function Market.On()
     return S.Get("enabled") and not ns.GamepadStandDown()
+end
+
+function Market.HouseKey()
+    return GetRealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
 end

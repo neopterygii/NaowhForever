@@ -11,8 +11,8 @@ local EVENTS = { "OWNED_AUCTIONS_UPDATED", "AUCTION_CANCELED", "AUCTION_HOUSE_TH
     "ITEM_KEY_ITEM_INFO_RECEIVED" }
 
 local list, spare = {}, {}
-local lowest, checked = {}, {}
-local checking
+local lowest, checked, cancelled = {}, {}, {}
+local checking, checkingKey
 local wanted = false
 local events
 
@@ -52,6 +52,7 @@ local function NextCheck()
         end
     end
     if checking then
+        checkingKey = checking.key
         Listings.Want(checking)
     else
         Listings.Want(nil)
@@ -65,6 +66,7 @@ local function Fill(auction)
 end
 
 local function Read()
+    wipe(cancelled)
     for i = #list, 1, -1 do
         spare[#spare + 1] = list[i]
         list[i] = nil
@@ -84,14 +86,14 @@ local function Read()
 end
 
 local function Checked()
-    local auction = checking
-    if not auction or Listings.state == "searching" or Listings.state == "waiting" then return end
+    local key = checking and checkingKey
+    if not key or Listings.state == "searching" or Listings.state == "waiting" then return end
     if Listings.state == "listed" then
-        lowest[auction.key] = (Listings.Cheapest())
+        lowest[key] = (Listings.Cheapest())
     else
-        lowest[auction.key] = false
+        lowest[key] = false
     end
-    checked[auction.key] = true
+    checked[key] = true
     NextCheck()
     Changed()
 end
@@ -127,12 +129,12 @@ end
 
 function Auctions.NextUndercut()
     for _, auction in ipairs(list) do
-        if Status(auction) == "undercut" and C_AuctionHouse.CanCancelAuction(auction.auctionID) then return auction end
+        if Status(auction) == "undercut" and Auctions.CanCancel(auction) then return auction end
     end
 end
 
 function Auctions.CanCancel(auction)
-    return not auction.sold and C_AuctionHouse.CanCancelAuction(auction.auctionID)
+    return not auction.sold and not cancelled[auction.auctionID] and C_AuctionHouse.CanCancelAuction(auction.auctionID)
 end
 
 function Auctions.CancelCost(auction)
@@ -140,8 +142,9 @@ function Auctions.CancelCost(auction)
 end
 
 function Auctions.Cancel(auctionID)
-    if not C_AuctionHouse.CanCancelAuction(auctionID) then return false end
+    if cancelled[auctionID] or not C_AuctionHouse.CanCancelAuction(auctionID) then return false end
     C_AuctionHouse.CancelAuction(auctionID)
+    cancelled[auctionID] = true
     return true
 end
 
@@ -153,7 +156,7 @@ function Auctions.Start()
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
     wipe(lowest)
     wipe(checked)
-    checking = nil
+    checking, checkingKey = nil, nil
     Listings.Start()
     Listings.onChange = Checked
     wanted = true

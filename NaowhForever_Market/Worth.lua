@@ -20,7 +20,7 @@ Market.Worth = Worth
 local function Each(info)
     local vendor = select(VENDOR_PRICE, GetItemInfo(info.hyperlink)) or 0
     local scan = not info.isBound and ns.AuctionPrice and ns.AuctionPrice(info.itemID)
-    local net = scan and math.floor(scan * (1 - C.AH_CUT))
+    local net = scan and Market.AfterCut(scan)
     if net and net > vendor then return net, true end
     return vendor, false
 end

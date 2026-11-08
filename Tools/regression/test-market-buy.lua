@@ -27,6 +27,13 @@ Check("and is sent by name when it is ready", t.browses[1] == "linen" and B.sear
 t.browse = { { itemKey = Key(2589), totalQuantity = 300, minPrice = 24 } }
 t.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
 Check("its results are read", #B.results == 1 and B.results[1].minPrice == 24 and not B.searching)
+local redraws = 0
+B.onChange = function() redraws = redraws + 1 end
+t.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+t.Fire("ITEM_KEY_ITEM_INFO_RECEIVED", 1234)
+t.Fire("AUCTION_HOUSE_SHOW_ERROR", 0)
+Check("events with nothing to do redraw nothing", redraws == 0)
+B.onChange = nil
 Check("the Shopping List comes from Professions", B.ShoppingList()[1].qty == 30)
 
 B.Pick(B.results[1].itemKey)

@@ -15,6 +15,23 @@ function Market.On()
     return S.Get("enabled") and not ns.GamepadStandDown()
 end
 
+function Market.AfterCut(price)
+    return math.floor(price * (1 - Market.C.AH_CUT))
+end
+
 function Market.HouseKey()
     return GetRealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
+end
+
+function Market.HouseData(store, create)
+    local account = ns.AccountSettings()
+    local all = account[store]
+    if not all then
+        if not create then return end
+        all = {}
+        account[store] = all
+    end
+    local key = Market.HouseKey()
+    if not all[key] and create then all[key] = {} end
+    return all[key]
 end

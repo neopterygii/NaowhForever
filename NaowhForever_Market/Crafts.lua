@@ -5,7 +5,6 @@ local GetItemCount = C_Item.GetItemCount
 local GetItemInfo = C_Item.GetItemInfo
 
 local Market = ns.Market
-local C = Market.C
 
 local ROSTER = "marketCharacters"
 local VENDOR_PRICE = 11
@@ -23,7 +22,7 @@ end
 
 local function Net(itemID)
     local scan = ns.AuctionPrice and ns.AuctionPrice(itemID)
-    return scan and math.floor(scan * (1 - C.AH_CUT))
+    return scan and Market.AfterCut(scan)
 end
 
 local function Raw(itemID)
@@ -122,14 +121,41 @@ function Crafts.View(fromBags, out)
     return out
 end
 
+local function MoreGain(a, b)
+    if a.gain ~= b.gain then return a.gain > b.gain end
+    return a.output < b.output
+end
+
 function Crafts.Total()
-    local total, n = 0, 0
+    local P = ns.Professions
+    local shop = P and P.Shopping
+    local order, left = {}, {}
     for _, row in ipairs(rows) do
-        if row.can > 0 and row.gain > 0 then
-            total, n = total + row.gain * row.can, n + 1
+        if row.can > 0 and row.gain > 0 then order[#order + 1] = row end
+    end
+    table.sort(order, MoreGain)
+    local total, n = 0, 0
+    for _, row in ipairs(order) do
+        local make = math.huge
+        for part, per in pairs(row.need) do
+            if not shop.VendorPrice(part) then
+                left[part] = left[part] or GetItemCount(part)
+                make = math.min(make, math.floor(left[part] / per))
+            end
+        end
+        if make > 0 then
+            for part, per in pairs(row.need) do
+                if left[part] then left[part] = left[part] - make * per end
+            end
+            total, n = total + row.gain * make, n + 1
         end
     end
     return total, n
+end
+
+function Crafts.Fresh()
+    if stale then return Crafts.Read() end
+    return Shop() ~= nil
 end
 
 function Crafts.Made(itemID)

@@ -43,7 +43,7 @@ end
 
 local function Net(item)
     local scan = item and ns.AuctionPrice and ns.AuctionPrice(item)
-    return scan and math.floor(scan * (1 - C.AH_CUT)) or 0
+    return scan and Market.AfterCut(scan) or 0
 end
 
 local function Value(objectID, kind, item)
@@ -162,8 +162,9 @@ local function Distance(width, height, a, b)
 end
 
 local function Here(mapID)
-    if C_Map.GetBestMapForUnit("player") ~= mapID then return end
-    local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+    local map = C_Map.GetBestMapForUnit("player")
+    if not map or ns.Shared.Places.SameMap(map) ~= mapID then return end
+    local pos = C_Map.GetPlayerMapPosition(map, "player")
     if not pos then return end
     local x, y = pos:GetXY()
     return { x = x, y = y }

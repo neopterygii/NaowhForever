@@ -69,10 +69,13 @@ local function Setup(opts)
         AccountSettings = function() return t.account end,
         L = function(text) return text end,
         Apply = Noop,
-        Shared = { CharacterData = function(key, create)
-            if create and not t.char[key] then t.char[key] = {} end
-            return t.char[key]
-        end },
+        Shared = {
+            CharacterData = function(key, create)
+                if create and not t.char[key] then t.char[key] = {} end
+                return t.char[key]
+            end,
+            Places = { SameMap = function(map) return t.sameMap and t.sameMap[map] or map end },
+        },
     }
     t.ns = ns
     local results = { commodity = {}, item = {} }

@@ -66,6 +66,11 @@ Check("a search waits for the auction house's throttle", M.Listings.state == "wa
 t.ready = true
 t.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
 Check("and goes when it is ready", M.Listings.state == "searching" and #t.searches == 3)
+local onChange, changes = M.Listings.onChange, 0
+M.Listings.onChange = function() changes = changes + 1 end
+t.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+Check("the throttle freeing with nothing waiting redraws nothing", changes == 0)
+M.Listings.onChange = onChange
 
 M.Sell.Pick("item:9999:suffix1")
 local gear = t.searches[#t.searches]
@@ -156,6 +161,13 @@ t.Fire("AUCTION_MULTISELL_UPDATE", 1, 2)
 Check("a multisell answers when its last auction is made", #done == 0)
 t.Fire("AUCTION_MULTISELL_UPDATE", 2, 2)
 Check("and only then", #done == 1 and done[1].ok)
+M.Post.Send(M.Bags.Get("item:9999"), 2, 5000, 3)
+local firstTimeout = t.timers[#t.timers]
+t.Fire("AUCTION_MULTISELL_UPDATE", 1, 2)
+firstTimeout()
+Check("each auction a multisell makes gives it longer to answer", #done == 1 and M.Post.Waiting())
+t.Fire("AUCTION_MULTISELL_UPDATE", 2, 2)
+Check("and it still answers when done", #done == 2 and done[2].ok)
 
 t = Setup({ bags = { [0] = { Stack(2770, 20) } }, status = { [2770] = UNKNOWN } })
 loading = t.M.Sell.Read()

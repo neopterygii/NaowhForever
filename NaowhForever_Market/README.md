@@ -55,7 +55,10 @@ NaowhForever_Market/
   suffix cleared, so similar items compare.
 - Searches and posts wait for `IsThrottledMessageSystemReady`; a search that waited goes on
   `AUCTION_HOUSE_THROTTLED_SYSTEM_READY`. A search with no answer in `SEARCH_TIMEOUT` seconds, or a
-  post in `POST_TIMEOUT`, frees the page instead of holding it.
+  post in `POST_TIMEOUT`, frees the page instead of holding it. A post of several items restarts
+  `POST_TIMEOUT` with each auction the game makes, so a long one is not given up while it posts.
+- When a scan finishes, the Sell page reads your bags again (`Page.Refresh`), so Up Next takes the new
+  prices and order.
 - The price steps a copper, or a silver where `C_AuctionHouse.SupportsCopperValues()` is false, and is
   never under one step. Your own cheapest listing is matched, never undercut.
 - With no listings and no scan price, an item is priced as Blizzard's sell frame prices it: its

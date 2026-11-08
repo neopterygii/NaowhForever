@@ -118,7 +118,7 @@ NaowhForever_QoL/
     Durability.lua      the low durability warning
     LootConfirm.lua     the retired loot confirmation skip, inert
     WaylaidCratesData.lua what each Waylaid Crate can be filled with (ns.WaylaidCrates), generated
-    AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary), Waylaid Crate Prices
+    AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary), from your scans or the release's prices, Waylaid Crate Prices
     FoodBar.lua         the Food & Drink Bar (its food and potion lists are Shared/Game/Consumables.lua)
     BagSpace.lua        Bag Space (ns.BagSpaceRescan; ns.BagSpace for its ignore list)
     BagSpaceIgnore.lua  Bag Space's Ignore List window (ns.ShowBagSpaceIgnoreList)
@@ -460,6 +460,13 @@ NaowhForever_QoL/
   bags you are looking at.
 - Auction Prices keeps one price table per auction house (realm and faction), as prices differ;
   the key is worked out once because it is read on every item tooltip.
+- Every release carries every Forever auction house's prices of its hour (`NaowhForever_AuctionData`).
+  A price comes from your own scan or from them, whichever is newer, so tooltips, Waylaid Crates
+  and Professions have prices before you ever scan. They load the first time something asks for
+  a price, never while every price feature is off.
+- Blizzard's data does not say which of your faction's houses is yours, so the house is the one
+  with the most items within 1% of your own last scan (at least 20). Until you have scanned, a
+  price is the middle of your faction's houses. A new scan of your own looks again.
 - Capture Other Addons' Scans hooks `C_AuctionHouse.ReplicateItems` the first time it is on, so a
   full scan another addon starts while the auction house is open is read like one from Scan Prices.
   A secure hook cannot be removed, so the hook checks the setting on each call and turning it off

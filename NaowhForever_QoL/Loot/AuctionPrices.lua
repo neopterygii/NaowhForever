@@ -1,4 +1,4 @@
--- AuctionPrices.lua: Auction Prices, the lowest buyout per item from a full scan, per realm and faction.
+-- AuctionPrices.lua: Auction Prices, the lowest buyout per item from a full scan or the release's prices, per realm and faction.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
@@ -37,6 +37,11 @@ local TEXT_EACH = ns.L(" |cff808080each, %s ago|r")
 local TEXT_FILLING = "%d %s"
 local TEXT_CHEAPEST = ns.L("cheapest")
 local MINUTES, HOURS, DAYS = "m", "h", "d"
+local TEXT_FEED_LINE = ns.L("Prices from %s ago: %s items priced")
+local FEED_ADDON = "NaowhForever_AuctionData"
+local FEED_BASE = 36
+local MATCH_MIN = 20
+local MATCH_SPREAD = 0.01
 
 local button, scanning, scanGen = nil, nil, 0
 local ownScan, houseOpen, hooked
@@ -44,6 +49,8 @@ local tooltipHooked
 local houseKey
 local priced, pricedAt
 local ageTicker
+local feedTried, feedHouses, feedTime, feedMedian, matched
+local decoded = {}
 
 local function House(create)
     local account = ns.AccountSettings()
@@ -53,18 +60,101 @@ local function House(create)
     return account.ahPrices[houseKey]
 end
 
-function ns.AuctionPrice(itemID)
+local function FeedHouses()
+    if not feedTried then
+        feedTried = true
+        C_AddOns.LoadAddOn(FEED_ADDON)
+        local feed = ns.AuctionFeed
+        local region = feed and feed.regions[GetCurrentRegion()]
+        local faction = UnitFactionGroup("player")
+        for id, house in pairs(region or {}) do
+            if house.faction == faction and house.prices ~= "" then
+                feedHouses = feedHouses or {}
+                feedHouses[id] = house
+            end
+        end
+        feedTime = feed and feed.time
+    end
+    return feedHouses
+end
+
+local function Decode(id)
+    if not decoded[id] then
+        local prices, item = {}, 0
+        for step, price in feedHouses[id].prices:gmatch("(%w+):(%w+)") do
+            item = item + tonumber(step, FEED_BASE)
+            prices[item] = tonumber(price, FEED_BASE)
+        end
+        decoded[id] = prices
+    end
+    return decoded[id]
+end
+
+local function Matches(own, feed)
+    local count = 0
+    for item, price in pairs(own) do
+        local other = feed[item]
+        if other and math.abs(other - price) <= price * MATCH_SPREAD then count = count + 1 end
+    end
+    return count
+end
+
+local function MatchHouse(house)
+    local best, most = false, MATCH_MIN - 1
+    for id in pairs(feedHouses) do
+        local count = Matches(house.prices, Decode(id))
+        if count > most then best, most = id, count end
+    end
+    return best
+end
+
+local function Median()
+    if not feedMedian then
+        local all = {}
+        for id in pairs(feedHouses) do
+            for item, price in pairs(Decode(id)) do
+                all[item] = all[item] or {}
+                all[item][#all[item] + 1] = price
+            end
+        end
+        feedMedian = {}
+        for item, list in pairs(all) do
+            table.sort(list)
+            feedMedian[item] = list[math.ceil(#list / 2)]
+        end
+    end
+    return feedMedian
+end
+
+local function FeedPrices()
+    if not FeedHouses() then return end
     local house = House()
-    if house and itemID then return house.prices[itemID], house.time end
+    if matched == nil then matched = house and house.time and MatchHouse(house) or false end
+    if matched then return Decode(matched) end
+    return Median()
+end
+
+local function FeedNewer(house, feed)
+    return feed and not (house and house.time and house.time >= feedTime)
+end
+
+function ns.AuctionPrice(itemID)
+    if not itemID then return end
+    local house, feed = House(), FeedPrices()
+    local own = house and house.time and house.prices[itemID]
+    if feed and feed[itemID] and (not own or FeedNewer(house, feed)) then return feed[itemID], feedTime end
+    if own then return own, house.time end
 end
 
 function ns.AuctionScanTime()
-    local house = House()
+    local house, feed = House(), FeedPrices()
+    if FeedNewer(house, feed) then return feedTime end
     return house and house.time
 end
 
 function ns.AuctionPriceList()
-    local house = House()
+    local house, feed = House(), FeedPrices()
+    if FeedNewer(house, feed) then return feed, feedTime end
     return house and house.prices, house and house.time
 end
 
@@ -90,7 +180,15 @@ local function ScanLine()
     return TEXT_SCAN_LINE:format(Age(time() - house.time), BreakUpLargeNumbers(Priced(house)))
 end
 
+local function FeedLine(prices)
+    local count = 0
+    for _ in pairs(prices) do count = count + 1 end
+    return TEXT_FEED_LINE:format(Age(time() - feedTime), BreakUpLargeNumbers(count))
+end
+
 function ns.AuctionScanSummary()
+    local house, feed = House(), FeedPrices()
+    if FeedNewer(house, feed) then return FeedLine(feed) .. "." end
     return ScanLine() .. "."
 end
 
@@ -135,6 +233,7 @@ end
 local function Finish(prices)
     local house = House(true)
     house.prices, house.time = prices, time()
+    matched = nil
     Stop()
     ShowAge()
     ns.Print(Tag() .. ": " .. ns.AuctionScanSummary())
@@ -262,20 +361,25 @@ local function OnEvent(_, event)
     end
 end
 
-local function Cheapest(prices, bundles)
+local function Price(itemID)
+    return (ns.AuctionPrice(itemID))
+end
+
+local function Cheapest(bundles)
     local cheapest
     for i = 1, #bundles do
-        local price = prices[bundles[i][1]]
+        local price = Price(bundles[i][1])
         local total = price and price * bundles[i][2]
         if total and (not cheapest or total < cheapest) then cheapest = total end
     end
     return cheapest
 end
 
-local function AddBundles(tooltip, prices, bundles, cheapest)
+local function AddBundles(tooltip, bundles, cheapest)
     for i = 1, #bundles do
         local item, count = bundles[i][1], bundles[i][2]
-        local total = prices[item] and prices[item] * count
+        local price = Price(item)
+        local total = price and price * count
         if total then
             local coins, color = C_CurrencyInfo.GetCoinTextureString(total, COIN_SIZE), WHITE
             if total == cheapest then
@@ -292,17 +396,18 @@ local function OnItemTooltip(tooltip, data)
     if not (own or crates) then return end
     local id = data and data.id
     if not id or (issecretvalue and issecretvalue(id)) then return end
-    local house = House()
-    if not (house and house.time) then return end
-    local price = own and house.prices[id]
+    local at = ns.AuctionScanTime()
+    if not at then return end
+    local price, priceAt
+    if own then price, priceAt = ns.AuctionPrice(id) end
     local bundles = crates and ns.WaylaidCrates[id]
-    local cheapest = bundles and Cheapest(house.prices, bundles)
+    local cheapest = bundles and Cheapest(bundles)
     if not (price or cheapest) then return end
-    local age = Age(time() - house.time)
+    local age = Age(time() - (priceAt or at))
     local right = price and C_CurrencyInfo.GetCoinTextureString(price, COIN_SIZE) .. TEXT_EACH:format(age)
         or TEXT_AGE:format(age, "")
     tooltip:AddDoubleLine(Tag(), right, WHITE.r, WHITE.g, WHITE.b, WHITE.r, WHITE.g, WHITE.b)
-    if cheapest then AddBundles(tooltip, house.prices, bundles, cheapest) end
+    if cheapest then AddBundles(tooltip, bundles, cheapest) end
 end
 
 local function HookTooltip()
@@ -334,10 +439,9 @@ ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
               .. "lowest buyout for each item, for this realm and faction. Blizzard allows one full "
               .. "scan every 15 minutes." },
         { key = "ahTooltip", label = "Auction House Price", toggle = true,
-          help = "Item tooltips show the item's price at your last auction house scan, for one of it, "
-              .. "and how long ago that was. Scan with the Scan Prices button on the auction house." },
+          help = "Item tooltips show an item's auction house price and how old it is." },
         { key = "ahCrates", label = "Waylaid Crate Prices", toggle = true,
-          help = "Waylaid Crate tooltips show what each filling costs at your last auction house scan." },
+          help = "Waylaid Crate tooltips show what each filling costs on the auction house." },
         { key = "ahCapture", label = "Capture Other Addons' Scans", toggle = true,
           help = "Also keeps the prices from full auction house scans that other addons start, "
               .. "such as Auctionator or TSM." },

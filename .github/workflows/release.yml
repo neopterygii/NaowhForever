@@ -8,6 +8,9 @@ name: Release
 # or the website. Every night a beta: main's version stamped on a commit of its own, tagged
 # "<next>-beta.<n>" but never pushed to main. The packager publishes a beta tag on
 # CurseForge's beta channel; betas post nothing to Discord.
+# Three times a day between those, a price release: the newest release again, tagged
+# "<release>-prices.<n>" off main, with the auction prices every tagged release builds just before
+# packaging. It adds no changelog line, so it posts nothing to Discord or the website.
 on:
   push:
     branches:
@@ -19,10 +22,18 @@ on:
     - cron: "30 15 * * *"
     # Nightly, after the daily watch (20:00, up to 75 minutes) has merged the day's data.
     - cron: "0 22 * * *"
+    # Price releases, so the release channel gets new auction prices about every six hours.
+    - cron: "30 3 * * *"
+    - cron: "30 9 * * *"
+    - cron: "30 20 * * *"
   workflow_dispatch:
     inputs:
       beta:
         description: "Tag tonight's beta now instead of a release (the bump and version are ignored)"
+        type: boolean
+        default: false
+      prices:
+        description: "Release the newest release again with this hour's auction prices (the rest is ignored)"
         type: boolean
         default: false
       bump:
@@ -47,7 +58,8 @@ jobs:
 
   prepare:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.beta)
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.beta
+        && !inputs.prices)
       || (github.event_name == 'schedule' && github.event.schedule == '30 15 * * *')
 
     runs-on: ubuntu-24.04
@@ -110,7 +122,8 @@ jobs:
 
   beta:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.beta)
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.beta
+        && !inputs.prices)
       || (github.event_name == 'schedule' && github.event.schedule == '0 22 * * *')
 
     runs-on: ubuntu-24.04
@@ -141,6 +154,52 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -q -am "chore(release): $version"
+          git tag -a "$version" -m "$version"
+          key="$RUNNER_TEMP/release_deploy_key"
+          hosts="$RUNNER_TEMP/known_hosts"
+          (umask 077 && printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$key")
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$hosts"
+          GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$hosts" \
+            git push "git@github.com:${GITHUB_REPOSITORY}.git" "refs/tags/$version"
+          rm -f "$key"
+          echo "Tagged $version."
+
+  prices:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.prices)
+      || (github.event_name == 'schedule'
+        && contains(fromJSON('["30 3 * * *", "30 9 * * *", "30 20 * * *"]'), github.event.schedule))
+
+    runs-on: ubuntu-24.04
+
+    # The push itself uses RELEASE_DEPLOY_KEY: a GITHUB_TOKEN tag push starts no release run.
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Price tag
+        env:
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          version=$(python3 Tools/release/release.py prices)
+          release=${version%-prices.*}
+          if ! git cat-file -e "$release:Tools/build/auction_feed.py" 2>/dev/null; then
+            echo "$release has no auction prices to refresh: no price release."
+            exit 0
+          fi
+          # The release's own commit, so nothing merged since it ships early.
+          git checkout -q "$release"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q --allow-empty -m "chore(release): $version"
           git tag -a "$version" -m "$version"
           key="$RUNNER_TEMP/release_deploy_key"
           hosts="$RUNNER_TEMP/known_hosts"
@@ -195,6 +254,20 @@ jobs:
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q lua5.1
           lua5.1 Tools/build/search_index.lua
+
+      # Every release carries the auction prices of its hour (NaowhForever_AuctionData/README.md),
+      # built over the committed placeholder. A price release has nothing else to ship, so it stops
+      # without them; any other release goes out with the placeholder and a warning.
+      - name: Build the auction prices
+        if: env.TAG != ''
+        env:
+          BLIZZARD_CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
+          BLIZZARD_CLIENT_SECRET: ${{ secrets.BLIZZARD_CLIENT_SECRET }}
+        run: |
+          if python3 Tools/build/auction_feed.py; then exit 0; fi
+          case "$TAG" in *-prices.*) exit 1 ;; esac
+          git checkout -- NaowhForever_AuctionData/Prices.lua
+          echo "::warning::No auction prices this time: $TAG ships the placeholder."
 
       - name: Release
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1

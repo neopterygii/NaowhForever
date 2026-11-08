@@ -220,9 +220,18 @@ already says: the PRs' lines are added by the workflow.
   notes are `## Unreleased` as `pending` prints it. Betas post nothing to Discord, and a night
   with nothing new on `main` since the last release or beta tags nothing.
 - **Run workflow** with **beta** ticked tags tonight's beta at once.
+- **At 03:30, 09:30 and 20:30 UTC** a price release: the newest release again, tagged
+  `<release>-prices.<n>` (after `1.0.6`: `1.0.6-prices.1`, `1.0.6-prices.2`, ...) on an empty
+  commit of its own off `main`, so nothing merged since the release goes out with it. Every tagged
+  release builds the auction prices of its hour before packaging (`NaowhForever_AuctionData`,
+  from Blizzard's auction data with the repository's `BLIZZARD_CLIENT_ID` and
+  `BLIZZARD_CLIENT_SECRET`), so with the daily release the release channel gets new prices about
+  every six hours. A price release adds no changelog line, so it posts nothing to Discord or the
+  website, and it stops if Blizzard sends no prices.
+- **Run workflow** with **prices** ticked makes a price release at once.
 
-Betas never move the release's number: the next release counts from the newest version
-without a suffix.
+Betas and price releases never move the release's number: the next release counts from the
+newest version without a suffix.
 
 ## License
 

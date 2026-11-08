@@ -92,7 +92,7 @@ def houses(access, region, summary=False):
         listed, size, modified = get(access, region, str(house_id))
         goods, goods_size, _ = get(access, region, f"{house_id}/commodities")
         prices = lowest(goods.get("auctions"), lowest(listed.get("auctions"), {}))
-        found[house_id] = {"name": name, "prices": prices}
+        found[house_id] = {"faction": name.split()[0] if name else "", "prices": prices}
         if summary:
             auctions, commodities = listed.get("auctions") or [], goods.get("auctions") or []
             print(f"{region} {house_id} {name!r}: {len(auctions)} auctions, {len(commodities)} commodities, "
@@ -112,8 +112,7 @@ def lua(feed, built):
         lines.append(f"        [{REGIONS[region]}] = {{")
         for house_id in sorted(found):
             house = found[house_id]
-            name = house["name"].replace("\\", "\\\\").replace('"', '\\"')
-            lines.append(f'            [{house_id}] = {{ name = "{name}", prices = "{encode(house["prices"])}" }},')
+            lines.append(f'            [{house_id}] = {{ faction = "{house["faction"]}", prices = "{encode(house["prices"])}" }},')
         lines.append("        },")
     lines += ["    },", "}", ""]
     return "\r\n".join(lines)

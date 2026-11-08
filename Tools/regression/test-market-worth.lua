@@ -27,6 +27,8 @@ t.scan, t.scanAt = { [2770] = 99 }, START + DAY
 H.Record()
 local change, days = H.Change(2770, 7)
 Check("a day later it is the change since yesterday", days == 1 and math.abs(change - 10) < 0.001)
+Check("a past day is packed into one string", type(house.days[20000]) == "string"
+    and type(house.days[20001]) == "table")
 
 t.scan, t.scanAt = { [2770] = 45 }, START + 7 * DAY
 H.Record()

@@ -56,7 +56,9 @@ NaowhForever_Market/
   `BLIZZARD_TABS` further down to cover them too.
 - At an auctioneer ours does not move: Blizzard's window is placed by the panel manager and cannot be
   dragged either, and moving it from addon code would fight that placing. Away from one it opens where
-  you last dragged it (`marketWindow`, the shared window position), one strata up (`HIGH`), and drags.
+  you last dragged it (`marketWindow`, placed by the shared `Parts.Place`), one strata up (`HIGH`), and
+  drags. A scan finishing redraws the page shown, but never a Sell, Buy or My Auctions tab away from the
+  auctioneer, and Bag Worth's rows pick an item on Sell only at the auctioneer.
 - Sell, Buy and My Auctions need the auction house, so away from it their tabs show a short "At an
   auctioneer" note instead; `/market` opens on Farm. Opening it while Blizzard's window is showing
   at an auctioneer steps back into ours instead.
@@ -76,7 +78,10 @@ NaowhForever_Market/
   suffix cleared, so similar items compare.
 - Searches and posts wait for `IsThrottledMessageSystemReady`; a search that waited goes on
   `AUCTION_HOUSE_THROTTLED_SYSTEM_READY`. A search with no answer in `SEARCH_TIMEOUT` seconds, or a
-  post in `POST_TIMEOUT`, frees the page instead of holding it.
+  post in `POST_TIMEOUT`, frees the page instead of holding it. A post of several items restarts
+  `POST_TIMEOUT` with each auction the game makes, so a long one is not given up while it posts.
+- When a scan finishes, the Sell page reads your bags again (`Page.Refresh`), so Up Next takes the new
+  prices and order.
 - The price steps a copper, or a silver where `C_AuctionHouse.SupportsCopperValues()` is false, and is
   never under one step. Your own cheapest listing is matched, never undercut.
 - With no listings and no scan price, an item is priced as Blizzard's sell frame prices it: its
@@ -98,10 +103,15 @@ NaowhForever_Market/
   `UNDERCUT_SMALL` (3%) it shows the amount in warning orange, more in red as a percent.
 - `CancelAuction` needs a hardware event: each Cancel and each Cancel Undercut press cancels one
   auction. A row's Cancel asks first with `ns.Confirm`, whose Yes is the click that cancels. Cancel
-  Undercut does not ask: its label says what it does and it cancels one per press. Cancelled items come
+  Undercut does not ask: its label says what it does and it cancels one per press. An auction once
+  cancelled is not offered again until your auctions are read back, so a quick second press moves on.
+  A check's answer is kept under the item it was asked for, since the auctions are read again (and
+  their tables reused) whenever the game sends them. Cancelled items come
   back by mail, so a cancelled auction cannot be posted again from here.
 - Buy searches by name with `SendBrowseQuery`, sorted by price then name, as Blizzard's browse does;
-  a picked item's listings come through the same search as Sell.
+  a picked item's listings come through the same search as Sell. The throttle freeing, another item's
+  data arriving or an error while not buying redraw nothing: the page rebuilds Professions' whole
+  shopping plan on each draw, and the throttle frees after every message, Blizzard's own included.
 - A commodity is bought in two presses, each a hardware event: the first asks the game for a price
   (`StartCommoditiesPurchase`, which answers with `COMMODITY_PRICE_UPDATED`), the second confirms it
   (`ConfirmCommoditiesPurchase`). A quote over `QUOTE_SLACK` (5%) above the listings' average is flagged,
@@ -116,7 +126,9 @@ NaowhForever_Market/
 - Price history keeps each item's lowest price per day from QoL's scans (`ns.AuctionPriceList`), for
   `HISTORY_DAYS` (14) days per realm and faction, in the account's `marketHistory`. It is written when a
   scan finishes (`ns.MarketRefresh`) and at login, so a scan taken while The Market was off is kept the
-  next time it is on. A day is a UTC day.
+  next time it is on. A day is a UTC day. Today is a table, since each scan lowers its prices; a past
+  day is packed into one string (",id:price,id:price,"), read with one `match` per lookup, which
+  roughly halves what thousands of items take in saved data and loads far faster than a table.
 - A price change compares today's lowest with the oldest day within `CHANGE_DAYS` (7) that has one, and
   says how many days back that is: with a scan only yesterday it reads "Since yesterday", never "7 days".
 - Bag Worth counts an item at what it makes on the auction house after the cut when that beats its
@@ -136,6 +148,11 @@ NaowhForever_Market/
   price, whichever is more); its profit is that less what they cost to buy (`Shopping.BuyPrice`).
   Materials a vendor sells (`Shopping.VendorPrice`) count at their price and never limit how many your
   bags make. Outputs with no scan price are left out.
+- Each row's From Bags is what that recipe alone could make. The total on top shares your bags out:
+  recipes are taken best gain a craft first, each using up the materials it makes from, so two
+  recipes that need the same cloth never count it twice.
+- Crafts reads its recipes when the page shows after a scan or a bag change (`Crafts.Changed`), not on
+  every draw.
 - Add to Queue goes to Professions' Craft Queue with `CraftQueue.AddWithShopping`, as its own Add does,
   only for your own recipes and while its Craft Queue is on. At an auctioneer, Buy opens the Buy page on
   the first material you are short of.

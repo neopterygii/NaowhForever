@@ -76,9 +76,11 @@ local function OnEvent(_, event, a, b)
     elseif event == "AUCTION_HOUSE_BROWSE_FAILURE" then
         Buy.searching = false
     elseif event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
-        if searchWaiting then SendSearch() end
+        if not searchWaiting then return end
+        SendSearch()
     elseif event == "ITEM_KEY_ITEM_INFO_RECEIVED" then
-        if picked.waiting and a == picked.itemID then Want() end
+        if not (picked.waiting and a == picked.itemID) then return end
+        Want()
     elseif event == "COMMODITY_PRICE_UPDATED" then
         if purchase.state ~= "quoting" then return end
         purchase.state, purchase.unit, purchase.total = "quoted", a, b
@@ -91,6 +93,8 @@ local function OnEvent(_, event, a, b)
         if purchase.state == "buying" and a == purchase.auctionID then Bought() end
     elseif purchase.state == "buying" then
         purchase.state = "failed"
+    else
+        return
     end
     Changed()
 end

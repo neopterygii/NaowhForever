@@ -127,7 +127,8 @@ end
 function Window.Refresh()
     if not Window.Shown() then return end
     ScanLine()
-    Market.Pages[shown].Show()
+    local page = Market.Pages[shown]
+    if page.Refresh then page.Refresh() else page.Show() end
 end
 
 ns.MarketRefresh = Window.Refresh

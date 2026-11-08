@@ -105,7 +105,8 @@ end
 
 local function OnEvent(_, event, arg)
     if event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
-        if Listings.state == "waiting" then Send() end
+        if Listings.state ~= "waiting" then return end
+        Send()
         return Changed()
     end
     if not wanted.itemID or Listings.state == "waiting" then return end

@@ -30,7 +30,6 @@ local ROW_IN, ROW_TEXT_GAP, ROW_LINE_IN = 8, 8, 4
 local MARKER_W, SCROLL_IN = 2, 4
 local EMPTY_SIZE, EMPTY_GAP = 16, 6
 local NEXT_FRAME = 0
-local DURATION_LABELS = { "12 Hours", "24 Hours", "48 Hours" }
 local TEXT_LADDER = ns.L("Listings now, cheapest first")
 local TEXT_SEARCHING = ns.L("Searching")
 local TEXT_NONE = ns.L("Nobody is selling this")
@@ -578,7 +577,7 @@ local function BuildForm()
     quantityOf = ns.Font(form, TEXT_SIZE, nil, T.muted)
     quantityOf:SetPoint("LEFT", quantity, "RIGHT", OF_GAP, 0)
     local items = {}
-    for i, hours in ipairs(DURATION_LABELS) do items[i] = { key = C.DURATIONS[i], label = hours } end
+    for i, duration in ipairs(C.DURATIONS) do items[i] = { key = duration, label = C.DURATION_LABELS[duration] } end
     durations = Parts.Tabs(form, DURATION_W, items, DurationPicked)
     durations:SetPoint("BOTTOMRIGHT")
     local label = ns.Font(form, SMALL_SIZE, nil, T.muted)
@@ -685,6 +684,10 @@ function Page.Show()
         Sell.Resume()
     end
     Page.Draw()
+end
+
+function Page.Refresh()
+    QueueReread()
 end
 
 function Page.Hide()

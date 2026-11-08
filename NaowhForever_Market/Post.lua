@@ -61,9 +61,9 @@ end
 local function OnEvent(_, event, created, total)
     if not waiting or confirm then return end
     if event == "AUCTION_HOUSE_AUCTION_CREATED" then
-        if not sent.multisell then Done(true) end
+        if sent.multisell then Wait() else Done(true) end
     elseif event == "AUCTION_MULTISELL_UPDATE" then
-        if created >= total then Done(true) end
+        if created >= total then Done(true) else Wait() end
     else
         Done(false)
     end

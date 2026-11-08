@@ -84,7 +84,7 @@ local function SortMenu(_, root)
 end
 
 local function SortClicked(link)
-    MenuUtil.CreateContextMenu(link, SortMenu)
+    ns.ContextMenu(link, SortMenu)
 end
 
 function UI.BrowseBar(parent, onChange)

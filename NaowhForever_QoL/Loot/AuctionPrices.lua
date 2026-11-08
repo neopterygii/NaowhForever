@@ -38,6 +38,7 @@ local TEXT_FILLING = "%d %s"
 local TEXT_CHEAPEST = ns.L("cheapest")
 local MINUTES, HOURS, DAYS = "m", "h", "d"
 local TEXT_FEED_LINE = ns.L("Prices from %s ago: %s items priced")
+local TEXT_TOOLTIP_TAG = ns.L("NF AH Price")
 local FEED_ADDON = "NaowhForever_AuctionData"
 local FEED_BASE = 36
 local MATCH_MIN = 20
@@ -406,7 +407,7 @@ local function OnItemTooltip(tooltip, data)
     local age = Age(time() - (priceAt or at))
     local right = price and C_CurrencyInfo.GetCoinTextureString(price, COIN_SIZE) .. TEXT_EACH:format(age)
         or TEXT_AGE:format(age, "")
-    tooltip:AddDoubleLine(Tag(), right, WHITE.r, WHITE.g, WHITE.b, WHITE.r, WHITE.g, WHITE.b)
+    tooltip:AddDoubleLine(ns.Color("accent", TEXT_TOOLTIP_TAG), right, WHITE.r, WHITE.g, WHITE.b, WHITE.r, WHITE.g, WHITE.b)
     if cheapest then AddBundles(tooltip, bundles, cheapest) end
 end
 

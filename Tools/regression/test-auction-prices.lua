@@ -249,7 +249,7 @@ local HERBS, PEACEBLOOM, SILVERLEAF, EARTHROOT = 248682, 2447, 765, 2449
 local function Headers(lines)
     local n = 0
     for _, line in ipairs(lines) do
-        if line.left == "Naowh AH" then n = n + 1 end
+        if line.left == "NF AH Price" then n = n + 1 end
     end
     return n
 end

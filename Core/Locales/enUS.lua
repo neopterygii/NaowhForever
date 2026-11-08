@@ -3696,6 +3696,7 @@ L["Next: %dx %s, about %s"] = true
 L["Next: %s"] = true
 L["Next: %s at %d. Hand them to %s."] = true
 L["Next: %s, %s."] = true
+L["NF AH Price"] = true
 L["NF Bandage already uses your best bandage. Add %s too?"] = true
 L["NF Drink already uses your best drink. Add %s too?"] = true
 L["NF Focus focuses your mouseover, or your target. Switch it on in Kept Current."] = true

@@ -52,7 +52,9 @@ NaowhForever_Market/
   `BLIZZARD_TABS` further down to cover them too.
 - At an auctioneer ours does not move: Blizzard's window is placed by the panel manager and cannot be
   dragged either, and moving it from addon code would fight that placing. Away from one it opens where
-  you last dragged it (`marketWindow`, the shared window position), one strata up (`HIGH`), and drags.
+  you last dragged it (`marketWindow`, placed by the shared `Parts.Place`), one strata up (`HIGH`), and
+  drags. A scan finishing redraws the page shown, but never a Sell, Buy or My Auctions tab away from the
+  auctioneer, and Bag Worth's rows pick an item on Sell only at the auctioneer.
 - Sell, Buy and My Auctions need the auction house, so away from it their tabs show a short "At an
   auctioneer" note instead; `/market` opens on Crafts. Opening it while Blizzard's window is showing
   at an auctioneer steps back into ours instead.
@@ -142,6 +144,11 @@ NaowhForever_Market/
   price, whichever is more); its profit is that less what they cost to buy (`Shopping.BuyPrice`).
   Materials a vendor sells (`Shopping.VendorPrice`) count at their price and never limit how many your
   bags make. Outputs with no scan price are left out.
+- Each row's From Bags is what that recipe alone could make. The total on top shares your bags out:
+  recipes are taken best gain a craft first, each using up the materials it makes from, so two
+  recipes that need the same cloth never count it twice.
+- Crafts reads its recipes when the page shows after a scan or a bag change (`Crafts.Changed`), not on
+  every draw.
 - Add to Queue goes to Professions' Craft Queue with `CraftQueue.AddWithShopping`, as its own Add does,
   only for your own recipes and while its Craft Queue is on. At an auctioneer, Buy opens the Buy page on
   the first material you are short of.

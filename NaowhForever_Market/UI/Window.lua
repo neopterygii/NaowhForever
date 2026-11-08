@@ -164,12 +164,7 @@ function Window.Open(page)
     window:RegisterForDrag("LeftButton")
     window:SetSize(W, H)
     window:ClearAllPoints()
-    local saved = ns.AccountSettings()[POSITION]
-    if type(saved) == "table" then
-        window:SetPoint(saved[1], UIParent, saved[2], saved[3], saved[4])
-    else
-        window:SetPoint("CENTER")
-    end
+    Parts.Place(window, POSITION)
     page = page or shown
     Present(AUCTION_ONLY[page] and AWAY_PAGE or page)
 end
@@ -203,6 +198,7 @@ end
 function Window.Refresh()
     if not Window.Shown() then return end
     ScanLine()
+    if AUCTION_ONLY[shown] and not atAuction then return end
     local page = Market.Pages[shown]
     if page.Refresh then page.Refresh() else page.Show() end
 end

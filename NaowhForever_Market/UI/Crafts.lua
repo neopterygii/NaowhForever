@@ -232,7 +232,7 @@ end
 
 function Page.Draw()
     if not active then return end
-    local read = Crafts.Read()
+    local read = Crafts.Fresh()
     Crafts.View(fromBags, view)
     local y = 0
     for i, data in ipairs(view) do
@@ -326,7 +326,10 @@ function Page.Build(parent)
     empty:SetPoint("TOP", scroll, "TOP", 0, -ROW_H)
     empty:SetWidth(VIEW_W * 2)
     events = CreateFrame("Frame")
-    events:SetScript("OnEvent", function() Page.Draw() end)
+    events:SetScript("OnEvent", function()
+        Crafts.Changed()
+        Page.Draw()
+    end)
 end
 
 function Page.Show()

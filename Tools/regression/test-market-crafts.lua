@@ -73,7 +73,7 @@ Check("From My Bags lists only what the bags make, most gained first", #view == 
 view = Cr.View(false, view)
 Check("All Recipes lists every one, most profit first", #view == 3 and view[1].output == BOLT)
 local total, n = Cr.Total()
-Check("crafting the bags first adds up", total == 9 * 7 + 57 * 3 and n == 2)
+Check("crafting the bags first shares their materials, best gain first", total == 57 * 3 + 9 * 1 and n == 2)
 
 Check("a tooltip finds what makes an item", Cr.Made(BOLT).who == nil)
 Check("and the best craft its material goes into", Cr.Into(LINEN).output == BOLT)
@@ -81,6 +81,8 @@ t.scan[BOLT] = 30
 Check("tooltips keep what they read until the prices change", Cr.Into(LINEN).output == BOLT)
 Cr.Changed()
 Check("and read again after a scan", Cr.Into(LINEN).output == BANDAGE)
+t.scan[BOLT] = 100
+Check("the page keeps its read until something changes", Cr.Fresh() and Cr.Into(LINEN).output == BANDAGE)
 
 for _, row in ipairs(Cr.rows) do byOutput[row.output] = row end
 bolt, bandage = byOutput[BOLT], byOutput[BANDAGE]

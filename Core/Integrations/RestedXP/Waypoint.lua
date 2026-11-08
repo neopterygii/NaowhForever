@@ -57,7 +57,7 @@ local function ReadDetails(element)
 end
 
 local function Stop()
-    ns.ClearGuideWaypoint()
+    if details then ns.ClearGuideWaypoint(details) end
     lastMap, lastX, lastY, lastTitle, details = nil, nil, nil, nil, nil
     lastGuide, lastStep = nil, nil
 end

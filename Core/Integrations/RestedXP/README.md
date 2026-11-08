@@ -376,6 +376,7 @@ Core/Integrations/RestedXP/
   frame that is shown (`IsShown() == false` is none); that is what put a question mark on it.
 
 - Follow RestedXP is a separate QoL > Interface > Waypoint Pin switch, independent of the theme/window. It hooks guide map/goto refreshes only after first enable, with no added polling. Only zone/map coordinates the native waypoint supports are forwarded; unsupported or world-only guide targets get no pin.
+- The feed clears only a destination it placed (`ns.ClearGuideWaypoint(details)`): turned on with RestedXP not loaded, it left nothing and cleared Follow Polestar's pin.
 - RestedXP's guide arrow stays as it is beside the pin. No RestedXP settings, frames, frame scripts or guide completion state are changed.
 
 - With the guide arrow hidden, map refreshes may be intermediate; the guide target is read after the

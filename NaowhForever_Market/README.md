@@ -80,7 +80,10 @@ NaowhForever_Market/
   `UNDERCUT_SMALL` (3%) it shows the amount in warning orange, more in red as a percent.
 - `CancelAuction` needs a hardware event: each Cancel and each Cancel Undercut press cancels one
   auction. A row's Cancel asks first with `ns.Confirm`, whose Yes is the click that cancels. Cancel
-  Undercut does not ask: its label says what it does and it cancels one per press. Cancelled items come
+  Undercut does not ask: its label says what it does and it cancels one per press. An auction once
+  cancelled is not offered again until your auctions are read back, so a quick second press moves on.
+  A check's answer is kept under the item it was asked for, since the auctions are read again (and
+  their tables reused) whenever the game sends them. Cancelled items come
   back by mail, so a cancelled auction cannot be posted again from here.
 - An owned auction's item key info (`GetItemKeyInfo`) can be missing until
   `ITEM_KEY_ITEM_INFO_RECEIVED`; until then it shows as Checking and is checked when it arrives.

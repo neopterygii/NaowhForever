@@ -132,4 +132,10 @@ function Window.Refresh()
     Market.Pages[shown].Show()
 end
 
-ns.MarketRefresh = Window.Refresh
+function ns.MarketRefresh()
+    if Market.On() then
+        Market.History.Record()
+        Market.BagWorth.Changed()
+    end
+    Window.Refresh()
+end

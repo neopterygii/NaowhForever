@@ -3,7 +3,8 @@ local ns = _G.NaowhForever
 
 local F = ns.FEATURES.market
 
-local S = ns.UI.ModuleSettings("market", { enabled = F.enabled, duration = 1, postKeys = true })
+local S = ns.UI.ModuleSettings("market", { enabled = F.enabled, duration = 1, postKeys = true, bagWorth = true,
+    tooltip = true })
 ns.MarketSettings = S
 
 local Market = { Settings = S }

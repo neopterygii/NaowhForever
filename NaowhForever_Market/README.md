@@ -112,7 +112,9 @@ NaowhForever_Market/
 - Price history keeps each item's lowest price per day from QoL's scans (`ns.AuctionPriceList`), for
   `HISTORY_DAYS` (14) days per realm and faction, in the account's `marketHistory`. It is written when a
   scan finishes (`ns.MarketRefresh`) and at login, so a scan taken while The Market was off is kept the
-  next time it is on. A day is a UTC day.
+  next time it is on. A day is a UTC day. Today is a table, since each scan lowers its prices; a past
+  day is packed into one string (",id:price,id:price,"), read with one `match` per lookup, which
+  roughly halves what thousands of items take in saved data and loads far faster than a table.
 - A price change compares today's lowest with the oldest day within `CHANGE_DAYS` (7) that has one, and
   says how many days back that is: with a scan only yesterday it reads "Since yesterday", never "7 days".
 - Bag Worth counts an item at what it makes on the auction house after the cut when that beats its

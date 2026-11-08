@@ -36,8 +36,7 @@ t.results.commodity[2589] = { { unitPrice = 24, quantity = 10, numOwnerItems = 4
 t.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589)
 local cost, short = B.Cost(10)
 Check("the cost takes the cheapest first and never your own", cost == 6 * 24 + 4 * 30 and short == 0)
-_, short = B.Cost(200)
-Check("more than is listed is short", short == 200 - 106)
+Check("more than is listed is short", select(2, B.Cost(200)) == 200 - 106)
 Check("too many is not bought", not B.Purchase(200) and #t.purchases == 0)
 
 Check("buying asks the game for a price", B.Purchase(10) and t.purchases[1].step == "start"

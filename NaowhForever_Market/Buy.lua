@@ -8,6 +8,7 @@ local BROWSE_SORTS = { { sortOrder = Enum.AuctionHouseSortOrder.Price, reverseSo
     { sortOrder = Enum.AuctionHouseSortOrder.Name, reverseSort = false } }
 local NO_FILTERS = {}
 local QUOTE_SLACK = 1.05
+local FAVOURITES = "marketFavourites"
 local EVENTS = { "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "AUCTION_HOUSE_BROWSE_FAILURE", "ITEM_KEY_ITEM_INFO_RECEIVED",
     "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE", "COMMODITY_PURCHASE_SUCCEEDED",
     "COMMODITY_PURCHASE_FAILED", "AUCTION_HOUSE_PURCHASE_COMPLETED", "AUCTION_HOUSE_SHOW_ERROR",
@@ -107,6 +108,29 @@ function Buy.Pick(itemKey, quantity)
     picked.itemKey, picked.itemID, picked.commodity = itemKey, itemKey.itemID, nil
     picked.quantity = quantity
     Want()
+end
+
+local function Favourites(create)
+    local account = ns.AccountSettings()
+    if create and not account[FAVOURITES] then account[FAVOURITES] = {} end
+    return account[FAVOURITES]
+end
+
+function Buy.IsFavourite(itemID)
+    local saved = Favourites()
+    return saved ~= nil and itemID ~= nil and saved[itemID] == true
+end
+
+function Buy.ToggleFavourite(itemID)
+    local saved = Favourites(true)
+    saved[itemID] = not saved[itemID] or nil
+end
+
+function Buy.Favourites(out)
+    wipe(out)
+    for itemID in pairs(Favourites() or {}) do out[#out + 1] = itemID end
+    table.sort(out)
+    return out
 end
 
 function Buy.PickItem(itemID, quantity)

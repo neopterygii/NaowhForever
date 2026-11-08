@@ -77,6 +77,7 @@ local function Read()
             auction.link, auction.quantity, auction.price = info.itemLink, info.quantity, info.buyoutAmount
             auction.seconds, auction.band, auction.sold = info.timeLeftSeconds, info.timeLeft, info.status == SOLD
             Fill(auction)
+            if auction.sold then Market.Sales.Note(auction.auctionID, auction.itemID, auction.quantity, auction.price) end
             list[#list + 1] = auction
         end
     end

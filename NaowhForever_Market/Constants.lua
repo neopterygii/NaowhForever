@@ -24,4 +24,5 @@ ns.Market.C = {
     RUN_KEEP = 10,
     RUN_EVENTS = 400,
     YIELD_MIN = 3,
+    SALES_KEEP = 200,
 }

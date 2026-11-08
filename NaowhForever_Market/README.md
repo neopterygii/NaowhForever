@@ -89,7 +89,9 @@ NaowhForever_Market/
   their tables reused) whenever the game sends them. Cancelled items come
   back by mail, so a cancelled auction cannot be posted again from here.
 - Buy searches by name with `SendBrowseQuery`, sorted by price then name, as Blizzard's browse does;
-  a picked item's listings come through the same search as Sell.
+  a picked item's listings come through the same search as Sell. The throttle freeing, another item's
+  data arriving or an error while not buying redraw nothing: the page rebuilds Professions' whole
+  shopping plan on each draw, and the throttle frees after every message, Blizzard's own included.
 - A commodity is bought in two presses, each a hardware event: the first asks the game for a price
   (`StartCommoditiesPurchase`, which answers with `COMMODITY_PRICE_UPDATED`), the second confirms it
   (`ConfirmCommoditiesPurchase`). A quote over `QUOTE_SLACK` (5%) above the listings' average is flagged,

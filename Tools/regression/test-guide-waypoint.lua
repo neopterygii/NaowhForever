@@ -136,7 +136,6 @@ pinAt = { map = 1429, x = 0.5, y = 0.6 }
 Check(ns.RestedXPPin() == false, "a pin elsewhere on the same map is not")
 pinAt, pinned.waypointSet = { map = 1429, x = 0.4, y = 0.6 }, false
 Check(ns.RestedXPPin() == false, "a step that let its pin go no longer owns it")
--- A hidden arrow is presentation state, not a missing guide destination.
 -- A waypoint with no quest and no title is named by RestedXP's own words for it.
 local function Line(text) return { tag = "complete", frame = { text = { GetText = function() return text end } } } end
 local function Show(shown)
@@ -157,6 +156,7 @@ Check(current and current.title == "Talk to Gryan Stoutmantle",
 Show({ zone = 88, x = 63, y = 40, step = { active = true, elements = {} } })
 Check(current and current.title == "Guide destination", "no words at all: the generic name")
 S.Set("enabled", false)
+-- A hidden arrow is presentation state, not a missing guide destination.
 local target = { zone = 88, x = 45, y = 60, title = "Quest area", step = { active = true } }
 arrow.element = target
 rxp.activeWaypoints = { target }

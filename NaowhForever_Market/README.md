@@ -182,6 +182,8 @@ NaowhForever_Market/
   clipped. A spot gathered in the last `PICKED_FADE` (10) minutes is faded, its node likely gone.
 - A gather is a loot window whose items come from a herb or vein: `GetLootSourceInfo` gives each
   slot's source GUID, and Glimmer's `GUID_OBJECT` pattern its object ID, looked up in `Glimmer.NODES`.
+  An item counts when its slot is taken (`LOOT_SLOT_CLEARED`), and the window's haul is recorded when
+  it closes, so items left behind with full bags count once, when you come back for them.
   Nothing is read from the soft target or tooltips, so it works on every client language. A vein
   mined again keeps its GUID, so its loot adds to the same node; a secret GUID is skipped.
 - A run starts with your first gather and ends after `RUN_IDLE` (10) minutes without one. Each
@@ -191,6 +193,8 @@ NaowhForever_Market/
 - What every node gives is kept account-wide (`marketYields`): after `YIELD_MIN` (3) nodes of a kind,
   Farm prices that node from its average loot, stones and gems included, instead of `YIELD`. A zone
   with a run of at least `RUN_MIN` (5) minutes is ranked by what you made an hour there, and says so.
+  Each gather tells Farm to rank again (`Farm.Changed`), and a run is kept under the zone's own map ID
+  (`Shared.Places.SameMap`), so it counts for the zone Farm lists.
 - The chart's hover runs an OnUpdate only while the mouse is over it.
 - The tooltip lines are added at PLAYER_LOGIN, after QoL's Auction Price line, so they follow it.
   A stack's size is read from the bag slot the tooltip is over; elsewhere it counts one, and the line

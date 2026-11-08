@@ -10,8 +10,11 @@ local STORE = "marketRuns"
 local YIELDS = "marketYields"
 local KIND = 1
 local SECONDS_PER_HOUR = 3600
+local LOOT_EVENTS = { "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_CLOSED" }
 
 local events, lastGUID
+local opened, taken = {}, {}
+local takenGUID, takenID, takenKind
 
 local Runs = {}
 Market.Runs = Runs
@@ -35,7 +38,7 @@ end
 
 local function Net(item)
     local scan = ns.AuctionPrice and ns.AuctionPrice(item)
-    return scan and math.floor(scan * (1 - C.AH_CUT)) or 0
+    return scan and Market.AfterCut(scan) or 0
 end
 
 function Runs.Node(guid)
@@ -62,9 +65,10 @@ end
 local function Where()
     local map = C_Map.GetBestMapForUnit("player")
     local pos = map and C_Map.GetPlayerMapPosition(map, "player")
-    if not pos then return map end
+    local same = map and ns.Shared.Places.SameMap(map)
+    if not pos then return same end
     local x, y = pos:GetXY()
-    return map, x, y
+    return same, x, y
 end
 
 function Runs.Record(id, kind, guid, items)
@@ -87,24 +91,49 @@ function Runs.Record(id, kind, guid, items)
     if #run.events < C.RUN_EVENTS then
         run.events[#run.events + 1] = { t = now - run.start, id = id, kind = kind, items = items, map = map, x = x, y = y }
     end
+    Market.Farm.Changed()
     if Runs.onChange then Runs.onChange() end
 end
 
-local function OnLoot()
-    local guid, id, kind, items
+local function Opened()
+    wipe(opened)
     for slot = 1, GetNumLootItems() do
         local source = GetLootSourceInfo(slot)
-        local node, nodeKind = Runs.Node(source)
+        local node, kind = Runs.Node(source)
         local link = node and GetLootSlotLink(slot)
         local item = link and GetItemInfoInstant(link)
         local _, _, quantity = GetLootSlotInfo(slot)
         if item and quantity and quantity > 0 then
-            items = items or {}
-            items[item] = (items[item] or 0) + quantity
-            guid, id, kind = source, node, nodeKind
+            opened[slot] = { guid = source, id = node, kind = kind, item = item, qty = quantity }
         end
     end
-    if items then Runs.Record(id, kind, guid, items) end
+end
+
+local function Cleared(slot)
+    local loot = opened[slot]
+    if not loot then return end
+    opened[slot] = nil
+    taken[loot.item] = (taken[loot.item] or 0) + loot.qty
+    takenGUID, takenID, takenKind = loot.guid, loot.id, loot.kind
+end
+
+local function Closed()
+    wipe(opened)
+    if not next(taken) then return end
+    local items = {}
+    for item, qty in pairs(taken) do items[item] = qty end
+    wipe(taken)
+    Runs.Record(takenID, takenKind, takenGUID, items)
+end
+
+local function OnLoot(_, event, slot)
+    if event == "LOOT_OPENED" then
+        Opened()
+    elseif event == "LOOT_SLOT_CLEARED" then
+        Cleared(slot)
+    else
+        Closed()
+    end
 end
 
 function Runs.List()
@@ -168,7 +197,8 @@ local function Apply()
         events:SetScript("OnEvent", OnLoot)
     end
     if not events then return end
-    if on then events:RegisterEvent("LOOT_OPENED") else events:UnregisterAllEvents() end
+    if not on then return events:UnregisterAllEvents() end
+    for _, event in ipairs(LOOT_EVENTS) do events:RegisterEvent(event) end
 end
 
 Market.Settings.OnChange(function(key)

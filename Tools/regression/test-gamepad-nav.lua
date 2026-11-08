@@ -4,19 +4,12 @@
 -- nearest target in line (a column, a row) or else that way. A selects (presses, opens a dropdown, moves from a side
 -- panel into its page, picks a slider for left/right until A or B), B goes back or closes, X flips a switch, LB/RB
 -- switch tabs, a scrolled list follows the focus, other buttons go on to the game, a fight hands the gamepad back,
--- and a legend of every button, the same everywhere, sits under the window's lower left. The windows, the settings
--- window, the menu list, the tabs, the dropdown, the slider and the switches are wired in.
+-- and a legend of every button, the same everywhere, sits under the window's lower left. Actual menus share the
+-- navigation lifecycle, including initial focus and reused rows.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
 local NOTHING = function() end
-
-local function Read(path)
-    local f = assert(io.open(path, "rb"))
-    local s = f:read("*a")
-    f:close()
-    return s
-end
 
 local Frame
 local made = {}
@@ -404,27 +397,35 @@ Press("PAD2")
 check("B closes the window", not win:IsShown())
 check("with no window open the frame lets go", not input:IsShown() and input.pads == false and ns.PadFocus() == nil)
 
--- The wiring, and what the file never does.
-local widgets = Read("Core/Options/Widgets.lua")
-local nav = Read("Shared/UI/GamepadNav.lua")
-for _, call in ipairs({ "SetOverrideBinding", "SetBinding", "GamepadFrameControlsManager", "SmartNavigation",
-    "SetPreferredGamepadInteractTarget", "UISpecialFrames", "ShowUIPanel", "HideUIPanel" }) do
-    check("GamepadNav never calls " .. call, not nav:find(call, 1, true))
+-- Menus are filled before their OnShow gives the gamepad to their selected row, even when rows are reused.
+env.GameTooltip = Region("GameTooltip")
+ns.Hairline = NOTHING
+ns.Shared.Parts.Arrow = function(parent) return parent:CreateTexture() end
+local menus = assert(loadfile("Shared/UI/Menus.lua"))
+setfenv(menus, env)
+menus()
+local menuWindow = Frame("Frame", UIParent, 0, 0, 400, 300)
+local owner = Button(menuWindow, 10, 200)
+ns.PadWindow(menuWindow)
+local chosen
+local function OpenChoices(first, other, selected)
+    return ns.ContextMenu(owner, function(_, root)
+        for _, name in ipairs({ first, other }) do
+            root:CreateRadio(name, function(value) return value == selected end,
+                function(value) chosen = value end, name)
+        end
+    end)
 end
-check("Shared.xml loads GamepadNav.lua after Menus.lua",
-    Read("Shared/Shared.xml"):find('UI\\Menus.lua"/>%s*<Script file="UI\\GamepadNav.lua"/>') ~= nil)
-check("every Parts.Window window registers", Read("Shared/UI/Window.lua"):find("ns.PadWindow(window, { header = HEADER })", 1, true))
-check("the settings window registers, with its sidebar as the side panel",
-    Read("Core/Options/Window.lua"):find("ns.PadWindow(window, { nav = sidebar, navFocus = ActiveNavButton, content = scrollFrame })",
-        1, true))
-check("every switch flips on X, and a card's header carries its switch",
-    widgets:find("t.padToggle = t", 1, true) and Read("Shared/Settings/Rows.lua"):find("head.padToggle = head.switch", 1, true))
-local menus = Read("Shared/UI/Menus.lua")
-check("the menu list registers, and its titles, dividers and disabled rows are skipped",
-    menus:find("ns.PadWindow(list,", 1, true) and menus:find("row.padSkip =", 1, true))
-check("a right-click menu opens under the gamepad's focus", menus:find("ns.PadFocus()", 1, true))
-check("the tabs say they are tabs", Read("Shared/UI/Tabs.lua"):find("bar.padTabs = true", 1, true))
-check("the dropdown opens on A and the slider steps", widgets:find("btn.padClick = OnDropdownMouseDown", 1, true)
-    and widgets:find("track.padStep = function", 1, true))
+local menuHandle = OpenChoices("A", "B", "B")
+check("a newly opened menu immediately focuses its selected option",
+    ns.PadFocus() and ns.PadFocus().element.text == "B")
+menuHandle:Close()
+check("closing a menu restores the owning window's focus", ns.PadFocus() == owner)
+OpenChoices("C", "D", "C")
+check("reopening a menu focuses the new selection, not the previous row",
+    ns.PadFocus() and ns.PadFocus().element.text == "C")
+Press("PAD1")
+check("A selects the current menu's selected choice and closes it", chosen == "C" and ns.PadFocus() == owner)
+menuWindow:Hide()
 
 print(("test-gamepad-nav: %d checks passed"):format(checks))

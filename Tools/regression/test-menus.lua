@@ -4,8 +4,9 @@
 -- action bar's protected call is then forbidden): Naowh's own list shows titles, dividers, buttons, submenus with
 -- a Back row, radios and checkboxes, keeps the game's responses (a checkbox stays open, a radio or button closes,
 -- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, splits a long list into columns,
--- is made parentless then parented to the owner's top window, and closes on a click elsewhere. Group Inspect
--- adds to the game's unit menus only off the style.
+-- is made parentless then parented to the owner's top window, and closes on a click elsewhere. It holds the
+-- gamepad like a window (B goes back a level, then closes) and a right-click menu opens under the gamepad's
+-- focus. Group Inspect adds to the game's unit menus only off the style.
 
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end

@@ -261,8 +261,8 @@ local function Show(owner, root, place)
     open = { owner = owner, root = root, level = root }
     list:ClearAllPoints()
     place(list)
-    list:Show()
     Render()
+    list:Show()
     list:RegisterEvent("GLOBAL_MOUSE_DOWN")
     local token = {}
     open.handle = token

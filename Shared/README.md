@@ -471,6 +471,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
   submenu, a page to the sidebar, then closes. X flips a switch (`padToggle`: its own, or the one a
   card's header carries). `padSkip` keeps a widget out (a menu's titles, the header's switch). The
   legend is the same everywhere: every button the window reads.
+  Menu rows are filled before the list is shown, so its first focus uses the current selection,
+  not the previous menu's reused row.
 - Forever has Zephras Isle twice: map 2521 (under Azeroth) and map 2665 (no parent), with the
   same name, continent (2991) and bounds in the game's UiMapAssignment, so a map percentage is
   the same spot on both; the game puts players on 2665 too (the Nightclaw Druids' Wowhead data

@@ -56,6 +56,10 @@ Shared/
                    (Parts.Pill, Parts.SetPill: Group Inspect's "NF"), the worn bar, the Wowhead copy card
   UI/Menus.lua     every right-click menu and dropdown (ns.ContextMenu, ns.DropdownMenu; ns.MenuOpen for
                    Parts.Tip): the game's menus, or under the Gamepad interface style a list of our own
+  UI/GamepadNav.lua under the Gamepad interface style, our windows with the gamepad's buttons
+                   (ns.PadWindow, ns.PadFocus): the D-pad moves, A selects, B goes back, X flips a
+                   switch, LB/RB switch tabs, with a focus ring and a legend of the buttons under the
+                   window's lower left
   UI/Marks.lua     an item's marks: rank stars and lines, the upgrade line, Forever's mark, the item icon,
                    its slot marks (item level, star, Forever's mark, upgrade arrow) and an atlas badge on
                    its top corner (Parts.ItemBadge: Bag Space's clock and quest "!"), and a class icon's
@@ -452,6 +456,21 @@ What a comment in the code used to say, in short. The house rules behind it are 
   open, a radio or button closes), opens a submenu in place with a Back row, and splits a long list
   into columns rather than scrolling. Group Inspect's entry on the game's unit menus
   (`Menu.ModifyMenu`) is left out under that style for the same reason.
+- Under that style our windows take the gamepad's buttons themselves (`GamepadNav.lua`). The game's
+  own gamepad navigation is the code our taint blocks, so we never call into it, set no binding and
+  no override binding: while one of our windows is the newest open, a frame of ours reads the
+  buttons first (`OnGamePadButtonDown`), keeps the D-pad, A, B, X, LB and RB, and lets every other
+  button through (`SetPropagateKeyboardInput`). The window is told it showed or hid by a child of
+  ours, so its own OnShow and OnHide stay its own. A fight hands the gamepad back on its first event,
+  before the lockdown refuses the propagation change. The legend uses the game's own icon for each
+  button (`InputIconTextureSetUtility`, only read), so it matches the player's gamepad. The D-pad
+  keeps to a column or a row before it goes off the line. A selects: it presses a button, picks a
+  choice, opens a dropdown (`padClick`, as it opens on mouse down) or a submenu, folds a card, moves
+  from the settings sidebar into its page, and picks a slider for left and right (`padStep`) until A
+  or B, so the D-pad never changes a value by passing over it. B goes back: out of a slider, a
+  submenu, a page to the sidebar, then closes. X flips a switch (`padToggle`: its own, or the one a
+  card's header carries). `padSkip` keeps a widget out (a menu's titles, the header's switch). The
+  legend is the same everywhere: every button the window reads.
 - Forever has Zephras Isle twice: map 2521 (under Azeroth) and map 2665 (no parent), with the
   same name, continent (2991) and bounds in the game's UiMapAssignment, so a map percentage is
   the same spot on both; the game puts players on 2665 too (the Nightclaw Druids' Wowhead data

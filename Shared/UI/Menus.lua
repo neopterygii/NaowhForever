@@ -153,6 +153,7 @@ local function ShowRow(row, e)
     row.dot:SetShown(kind == "radio" and e:IsSelected())
     row.arrow:SetShown(kind == "button" and #e.children > 0)
     row.hover:SetShown(kind ~= "title" and kind ~= "divider" and on)
+    row.padSkip = kind == "title" or kind == "divider" or not on
     if kind == "checkbox" and e:IsSelected() then
         row.mark:SetTexture(St.CHECK)
         row.mark:Show()
@@ -213,6 +214,23 @@ local function OnGlobalMouseDown()
     Close()
 end
 
+-- The gamepad's first row: the radio picked, else the first one (nil).
+local function PadFirst(targets)
+    for _, row in ipairs(targets) do
+        local e = row.element
+        if e and e.kind == "radio" and e:IsSelected() then return row end
+    end
+end
+
+-- B: a submenu goes back a level, the top closes.
+local function PadBack()
+    if open and open.level.parent then
+        open.level = open.level.parent
+        return Render()
+    end
+    Close()
+end
+
 local function OnHide()
     list:UnregisterEvent("GLOBAL_MOUSE_DOWN")
     GameTooltip:Hide()
@@ -232,6 +250,7 @@ local function Build()
     list:SetScript("OnHide", OnHide)
     list:SetScript("OnEvent", OnGlobalMouseDown)
     rows = {}
+    ns.PadWindow(list, { initial = PadFirst, back = PadBack })
 end
 
 local function Show(owner, root, place)
@@ -252,7 +271,10 @@ local function Show(owner, root, place)
     return token
 end
 
+-- At the cursor; under the gamepad's focus while a Naowh window holds the gamepad.
 local function AtCursor(frame)
+    local focus = ns.PadFocus()
+    if focus then return frame:SetPoint("TOPLEFT", focus, "BOTTOMLEFT", 0, -DROP) end
     local x, y = GetCursorPosition()
     local scale = frame:GetEffectiveScale()
     frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)

@@ -7,7 +7,7 @@ local Settings = ns.Shared.Settings
 
 local ORDER_SELLING, ORDER_BAGS = 10, 20
 local TEXT_OFF = ns.L("Turn on The Market")
-local DURATIONS = { { [1] = "12 Hours", [2] = "24 Hours", [3] = "48 Hours" }, { 1, 2, 3 } }
+local DURATIONS = { Market.C.DURATION_LABELS, Market.C.DURATIONS }
 
 local function On()
     return Market.On()

@@ -165,7 +165,7 @@ NaowhForever_Market/
   Your skill is Glimmer's (`Target.Skill`): a node you cannot gather yet is drawn faded behind a filter
   and left off the loop.
 - The loop is a nearest-neighbour tour of the zone's spots you can gather, starting at the one nearest
-  you when you are in the zone. Its time is its length at `TRAVEL_SPEED` (10 yards a second, riding)
+  you when you are in the zone, on its own map ID or one `Shared.Places.SameMap` reads as it. Its time is its length at `TRAVEL_SPEED` (10 yards a second, riding)
   plus `GATHER_SECONDS` a node, and its worth assumes `OCCUPANCY` (a third) of spots hold a node at a
   time, so the hourly figure is an estimate and says so.
 - Ranking every zone with a full tour would stall a frame, so the zone list estimates each tour's

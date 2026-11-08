@@ -68,6 +68,7 @@ local function Setup(opts)
         AuctionPriceList = function() if t.scanAt then return t.scan, t.scanAt end end,
         AccountSettings = function() return t.account end,
         L = function(text) return text end,
+        Shared = { Places = { SameMap = function(map) return t.sameMap and t.sameMap[map] or map end } },
     }
     t.ns = ns
     local results = { commodity = {}, item = {} }

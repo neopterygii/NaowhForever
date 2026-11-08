@@ -74,6 +74,10 @@ local stops = F.Stops("Map 1 loop")
 Check("the loop's waypoints are named for their node, in percent", #stops == 2 and stops[1][2] == 1
     and math.abs(stops[1][3] - 20) < 1e-9 and stops[1][1] == "Peacebloom")
 
+t.sameMap, t.playerMap = { [99] = 1 }, 99
+F.Zone(1)
+Check("on a map that is the zone's under another ID, the loop still starts nearest you", F.loop[1].id == PEACEBLOOM)
+
 t.playerMap = 5
 F.Zone(2)
 Check("away from the zone the loop starts at its first stop", #F.loop == 1 and F.loop[1].id == SILVERLEAF)

@@ -62,7 +62,7 @@ local function DungeonMenu(_, root)
 end
 
 local function DungeonClicked(link)
-    MenuUtil.CreateContextMenu(link, DungeonMenu)
+    ns.ContextMenu(link, DungeonMenu)
 end
 
 local function Filtered(text)

@@ -442,8 +442,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
   `ns.GamepadOwnsPanels()` it says so in chat instead: `C_Map.OpenWorldMap` runs the game's
   `ShowUIPanel` from our click, and the gamepad builds its bindings inside that, which is how the
   Map Window tainted them. Every "show on the map" in the addon goes through it.
-- Every menu goes through `Menus.lua` (`test-menus.lua` fails on any other file that calls `MenuUtil`
-  or `Menu.GetManager`). The game's menu runs our callback securely, but the menu and its entries are
+- Every menu, including the Group Finder's Dungeon and Sort menus, goes through `Menus.lua`.
+  The game's menu runs our callback securely, but the menu and its entries are
   ours, so its close runs tainted, and under the Gamepad interface style that close changes the
   gamepad's bindings: the action bar's `SetPreferredGamepadInteractTarget` was then blocked. Nothing
   inside the game's menu can fix that, so under `ns.GamepadStandDown()` the same generators fill a

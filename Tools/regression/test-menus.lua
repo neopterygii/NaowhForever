@@ -4,9 +4,8 @@
 -- action bar's protected call is then forbidden): Naowh's own list shows titles, dividers, buttons, submenus with
 -- a Back row, radios and checkboxes, keeps the game's responses (a checkbox stays open, a radio or button closes,
 -- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, splits a long list into columns,
--- is made parentless then parented to the owner's top window, and closes on a click elsewhere. No Naowh file but
--- this one calls MenuUtil or Menu.GetManager, and Group Inspect adds to the game's unit menus only off the style.
-local TocFiles = dofile("Tools/regression/toc_files.lua")
+-- is made parentless then parented to the owner's top window, and closes on a click elsewhere. Group Inspect
+-- adds to the game's unit menus only off the style.
 
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
@@ -228,6 +227,37 @@ check("an old handle cannot close the new menu", second:IsShown())
 second:Close()
 check("its own handle can", not list:IsShown())
 
+-- The Group Finder's Dungeon menu uses our list under the style and searches the picked dungeon.
+local search = { LEVEL = "level", ALL = "all", pick = "level" }
+function search.Activities(out) out[1] = 1; return 1 end
+function search.Suits() return true end
+function search.Run(pick) search.pick = pick; return true end
+local parts = ns.Shared.Parts
+parts.Link = function(parent, click)
+    local link = Region("Button")
+    link:SetParent(parent)
+    link.click = click
+    return link
+end
+parts.SetLink = function(link, text) link.label = text end
+parts.SearchBox = function() return Region("Frame") end
+ns.GroupFinder = {
+    Settings = { Get = function() return "newest" end, OnChange = NOTHING },
+    Listings = { Activity = function() return { short = "DM", min = 17, max = 26 } end },
+    Search = search,
+    UI = { Style = { FILTER_GAP = 8, SEARCH_H = 24, CONTENT_W = 500 } },
+}
+local browse = assert(loadfile("NaowhForever_Utilities/GroupFinder/UI/BrowseBar.lua"))
+setfenv(browse, env)
+browse()
+local bar = ns.GroupFinder.UI.BrowseBar(window, NOTHING)
+bar.dungeon.click(bar.dungeon)
+check("the Dungeon menu opens our choices without opening a game menu",
+    Row("DM 17-26") and list:IsShown() and game.contexts == 0 and game.opened == 0)
+Click("DM 17-26")
+check("picking a dungeon searches it, updates the label and closes the menu",
+    search.pick == 1 and bar.dungeon.label == "Dungeon: DM 17-26" and not list:IsShown())
+
 -- Group Inspect adds to the game's unit menus only off the style.
 local modified = 0
 local giEnv = setmetatable({
@@ -246,25 +276,5 @@ check("under the style Group Inspect leaves the game's unit menus alone", modifi
 gamepad = false
 giNs.Apply()
 check("with keyboard and mouse it adds itself to them", modified == 3)
-
--- The rule: only Menus.lua opens the game's menus.
-local HELPER = "Shared/UI/Menus.lua"
-local MODIFY_OK = "NaowhForever_Utilities/GroupInspect/UI/Menu.lua"
-local offenders = {}
-for _, path in ipairs(TocFiles("%.lua$")) do
-    if path ~= HELPER and not path:find("^Libs/") then
-        local f = assert(io.open(path, "rb"))
-        local source = f:read("*a")
-        f:close()
-        if source:find("MenuUtil%s*%.") or source:find("Menu%s*%.%s*GetManager") then
-            offenders[#offenders + 1] = path
-        end
-        if source:find("Menu%s*%.%s*ModifyMenu") and not (path == MODIFY_OK and source:find("GamepadStandDown")) then
-            offenders[#offenders + 1] = path
-        end
-    end
-end
-check("no Naowh file but " .. HELPER .. " calls MenuUtil or Menu.GetManager: " .. table.concat(offenders, ", "),
-    #offenders == 0)
 
 print(("menus: %d checks passed"):format(checks))

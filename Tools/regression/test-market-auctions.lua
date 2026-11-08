@@ -45,8 +45,11 @@ local undercut, listed = A.Counts()
 Check("the counts leave out what has sold", undercut == 1 and listed == 60 * 20 + 58 * 5 + 5000 + 40 * 2)
 Check("Cancel Undercut picks the undercut one", A.NextUndercut() == list[1])
 Check("cancelling sends its auction", A.Cancel(1) and t.cancels[1] == 1)
+Check("a second press before the list comes back cancels nothing again", A.NextUndercut() == nil
+    and not A.Cancel(1) and #t.cancels == 1)
 t.Fire("AUCTION_CANCELED", 1)
 Check("and your auctions are asked for again", t.queries == 2)
+t.Fire("OWNED_AUCTIONS_UPDATED")
 t.locked[1] = true
 Check("an auction the game will not cancel is skipped", A.NextUndercut() == nil and not A.Cancel(1))
 Check("a sold one has no cancel", not A.CanCancel(list[4]))
@@ -56,6 +59,27 @@ t.Fire("ITEM_KEY_ITEM_INFO_RECEIVED", 1111)
 Check("when it arrives, it is checked", #t.searches == 3 and t.searches[3].key.itemID == 1111)
 t.RunTimers()
 Check("a check with no answer says so", A.Status(list[5]) == "noanswer" and changes > 0)
+
+t = World.Setup({
+    owned = {
+        { auctionID = 1, itemKey = Key(2770), quantity = 5, buyoutAmount = 60, status = 0 },
+        { auctionID = 2, itemKey = Key(2589), quantity = 5, buyoutAmount = 10, status = 0 },
+        { auctionID = 3, itemKey = Key(4306), quantity = 5, buyoutAmount = 10, status = 0 },
+    },
+    keyInfo = { [2770] = { isCommodity = true }, [2589] = { isCommodity = true }, [4306] = { isCommodity = true } },
+})
+A = t.M.Auctions
+A.Start()
+t.Fire("OWNED_AUCTIONS_UPDATED")
+t.results.commodity[2770] = { { unitPrice = 50, quantity = 5, numOwnerItems = 0 } }
+t.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2770)
+table.remove(t.owned, 1)
+t.Fire("OWNED_AUCTIONS_UPDATED")
+t.results.commodity[2589] = { { unitPrice = 2, quantity = 5, numOwnerItems = 0 } }
+t.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589)
+Check("a check answered after the list changed is kept for its own item", A.Status(A.list[1]) == "undercut"
+    and A.Status(A.list[2]) == "checking")
+A.Stop()
 
 t = World.Setup({ owned = {} })
 t.ready = false

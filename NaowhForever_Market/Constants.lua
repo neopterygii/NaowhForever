@@ -8,5 +8,5 @@ ns.Market.C = {
     POST_TIMEOUT = 10,
     MAX_ROWS = 50,
     DURATIONS = { 1, 2, 3 },
-    DURATION_HOURS = { 12, 24, 48 },
+    DURATION_LABELS = { "12 Hours", "24 Hours", "48 Hours" },
 }

@@ -9,10 +9,10 @@ local DIVIDER_H, COLUMN_GAP = 9, 4
 local SCREEN_SHARE = 0.8
 local DROP = 2
 local STRATA = "FULLSCREEN_DIALOG"
+local HOVER_ALPHA = 0.08
 local TEXT_BACK = ns.L("Back")
 local RESPONSE_DEFAULT = { checkbox = "refresh" }
 
--- MenuResponse values, by name, for Naowh's own list.
 local function Response(value)
     local R = MenuResponse
     if not R or value == nil then return nil end
@@ -22,7 +22,6 @@ local function Response(value)
     return "all"
 end
 
--- The menu description Naowh's generators fill: the subset of the game's API they use.
 local Element = {}
 Element.__index = Element
 
@@ -116,7 +115,7 @@ local function MakeRow()
     row:SetParent(list)
     row:SetHeight(ROW_H)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    row.hover = ns.Solid(row, "HIGHLIGHT", T.fg, St.ROW_HOVER * 2)
+    row.hover = ns.Solid(row, "HIGHLIGHT", T.fg, HOVER_ALPHA)
     row.hover:SetAllPoints()
     row.text = ns.Font(row, St.TEXT_SIZE)
     row.text:SetJustifyH("LEFT")
@@ -210,7 +209,7 @@ end
 local function OnGlobalMouseDown()
     if not open then return end
     if list:IsMouseOver() then return end
-    if open.owner and open.owner.IsMouseOver and open.owner:IsMouseOver() then return end
+    if open.owner and open.owner ~= UIParent and open.owner.IsMouseOver and open.owner:IsMouseOver() then return end
     Close()
 end
 
@@ -232,6 +231,7 @@ local function PadBack()
 end
 
 local function OnHide()
+    list:Hide()
     list:UnregisterEvent("GLOBAL_MOUSE_DOWN")
     GameTooltip:Hide()
     open = nil
@@ -280,7 +280,6 @@ local function AtCursor(frame)
     frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)
 end
 
--- Opens generator(owner, root)'s menu at the cursor, like MenuUtil.CreateContextMenu.
 function ns.ContextMenu(owner, generator)
     if not ns.GamepadStandDown() then return MenuUtil.CreateContextMenu(owner, generator) end
     local root = NewElement("root")
@@ -288,7 +287,6 @@ function ns.ContextMenu(owner, generator)
     return Show(owner, root, AtCursor)
 end
 
--- Opens fill(root)'s menu under owner, height tall at most; returns a handle with IsShown and Close.
 function ns.DropdownMenu(owner, fill, height)
     if not ns.GamepadStandDown() then
         if not (MenuUtil and MenuUtil.CreateRootMenuDescription and MenuVariants

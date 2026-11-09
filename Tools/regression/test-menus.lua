@@ -6,7 +6,9 @@
 -- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, splits a long list into columns,
 -- is made parentless then parented to the owner's top window, and closes on a click elsewhere. It holds the
 -- gamepad like a window (B goes back a level, then closes) and a right-click menu opens under the gamepad's
--- focus. Group Inspect adds to the game's unit menus only off the style.
+-- focus. Group Inspect adds to the game's unit menus only off the style. No Naowh file but this one calls
+-- MenuUtil or Menu.GetManager.
+local TocFiles = dofile("Tools/regression/toc_files.lua")
 
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
@@ -22,7 +24,7 @@ local function Region(kind)
     function r:SetScript(name, fn) self.scripts[name] = fn end
     function r:GetScript(name) return self.scripts[name] end
     function r:SetParent(p) self.parent = p end
-    function r:GetParent() return self.parent end
+    function r:GetParent() return rawget(self, "parent") end
     function r:SetHeight(h) self.h = h end
     function r:GetHeight() return self.h end
     function r:SetWidth(w) self.w = w end
@@ -214,6 +216,17 @@ list.over = false
 list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
 check("a click elsewhere closes it", not list:IsShown())
 
+ns.ContextMenu(owner, Fill)
+list.scripts.OnHide(list)
+check("hidden with its window, it is closed, not left open behind it", not list:IsShown() and not ns.MenuOpen())
+
+ns.ContextMenu(UIParent, Fill)
+list.over = false
+UIParent.over = true
+list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
+check("a menu owned by UIParent still closes on a click elsewhere", not list:IsShown())
+UIParent.over = false
+
 local first = ns.DropdownMenu(owner, function(root)
     for i = 1, 30 do root:CreateRadio("Choice " .. i, function() return false end, NOTHING, i) end
 end, 200)
@@ -300,5 +313,25 @@ check("under the style Group Inspect leaves the game's unit menus alone", modifi
 gamepad = false
 giNs.Apply()
 check("with keyboard and mouse it adds itself to them", modified == 3)
+
+-- The rule: only Menus.lua opens the game's menus.
+local HELPER = "Shared/UI/Menus.lua"
+local MODIFY_OK = "NaowhForever_Utilities/GroupInspect/UI/Menu.lua"
+local offenders = {}
+for _, path in ipairs(TocFiles("%.lua$")) do
+    if path ~= HELPER and not path:find("^Libs/") then
+        local f = assert(io.open(path, "rb"))
+        local source = f:read("*a")
+        f:close()
+        if source:find("MenuUtil%s*%.") or source:find("Menu%s*%.%s*GetManager") then
+            offenders[#offenders + 1] = path
+        end
+        if source:find("Menu%s*%.%s*ModifyMenu") and not (path == MODIFY_OK and source:find("GamepadStandDown")) then
+            offenders[#offenders + 1] = path
+        end
+    end
+end
+check("no Naowh file but " .. HELPER .. " calls MenuUtil or Menu.GetManager: " .. table.concat(offenders, ", "),
+    #offenders == 0)
 
 print(("menus: %d checks passed"):format(checks))

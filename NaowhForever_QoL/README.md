@@ -1649,6 +1649,7 @@ NaowhForever_QoL/
   stubs of the game's API.
 
 ### Fishing
+- One-Key Fishing stands down under the Gamepad interface style before building input buttons or registering handlers; its override bindings would change the gamepad's input. The saved preference remains and its card gives the existing Gamepad reason. Louder Splash remains independent.
 - One-Key Fishing is a secure button (`NaowhForeverFish`) on its key binding. Its PreClick picks what this
   press does, out of combat: your fishing gear if it is not on, then a lure if the pole has none, then Fishing.
   One press does one thing, as the game's addon rules ask. While you cast or channel anything it does nothing,

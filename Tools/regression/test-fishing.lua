@@ -62,6 +62,7 @@ local ns = {
     SettingsRoot = function() return root end,
     AccountSettings = function() return account end,
     GamepadStandDown = function() return state.gamepad end,
+    GamepadWhy = function() return state.gamepad and "Gamepad owns fishing input" or nil end,
     Print = function(text) state.printed[#state.printed + 1] = text end,
     Apply = NOTHING, ShowUnlockMode = NOTHING, HideUnlockMode = NOTHING,
     Glimmer = { Plain = function(v) return not (type(v) == "table" and v.secret) end },
@@ -102,14 +103,19 @@ local env = setmetatable({
     GetTime = function() return state.now end,
     GetBindingKey = function() return unpack(state.keys) end,
     SetOverrideBinding = function(owner, priority, key, action)
+        assert(not (state.strictBindings and state.gamepad), "no gamepad override writes")
         state.overrides[owner] = state.overrides[owner] or {}
         state.overrides[owner][key] = { action = action, priority = priority }
     end,
     SetOverrideBindingClick = function(owner, priority, key, button)
+        assert(not (state.strictBindings and state.gamepad), "no gamepad click overrides")
         state.overrides[owner] = state.overrides[owner] or {}
         state.overrides[owner][key] = { click = button, priority = priority }
     end,
-    ClearOverrideBindings = function(owner) state.overrides[owner] = nil end,
+    ClearOverrideBindings = function(owner)
+        assert(not (state.strictBindings and state.gamepad), "no gamepad override clears")
+        state.overrides[owner] = nil
+    end,
     GetInventoryItemID = function(_, slot) return state.worn[slot] end,
     GetInventoryItemLink = function(_, slot) return state.links[slot] end,
     UnitGUID = function(unit)
@@ -525,5 +531,21 @@ Check("a /reload mid-cast leaves it noted", account.fishingLoudTemps ~= nil, tru
 loudBoot.scripts.OnEvent(loudBoot, "PLAYER_LOGIN")
 Check("and the next login puts it back", next(state.temps), nil)
 Check("and forgets it", account.fishingLoudTemps, nil)
+
+state.gamepad, state.strictBindings = true, true
+local oldKey = named.NaowhForeverFish
+S.Set("fishingKey", true)
+S.Set("fishingDoubleClick", true)
+local beforeFrames = #frames
+Load("NaowhForever_QoL/Loot/Fishing.lua")
+local padEvents, padBoot = frames[beforeFrames + 1], frames[beforeFrames + 2]
+padBoot.scripts.OnEvent(padBoot, "PLAYER_LOGIN")
+Check("Gamepad login with saved fishing enabled creates no input buttons", #frames, beforeFrames + 2)
+Check("it leaves any earlier test button alone", named.NaowhForeverFish, oldKey)
+Check("it registers no channel, combat, mouse or soft-target handlers", Count(padEvents.events), 0)
+ns.Apply()
+Check("profile application still leaves Gamepad input alone", Count(padEvents.events), 0)
+Check("the fishing card explains the style restriction", cards.fishingKey.switchWhy(), "Gamepad owns fishing input")
+state.gamepad, state.strictBindings = false, false
 
 print(("PASS fishing: %d checks"):format(checks))

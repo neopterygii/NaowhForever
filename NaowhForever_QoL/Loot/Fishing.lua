@@ -37,7 +37,7 @@ local luredAt, triedLure = -LURE_SETTLE, nil
 local missed = {}
 
 local function On()
-    return S.Get("enabled") and S.Get("fishingKey")
+    return S.Get("enabled") and S.Get("fishingKey") and not ns.GamepadStandDown()
 end
 
 local function Point(button, kind, value, targetSlot)
@@ -219,6 +219,7 @@ local function Build()
 end
 
 local function Apply()
+    if ns.GamepadStandDown() then RemoveTemps(); return end
     if InCombatLockdown() then
         pending = true
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -280,6 +281,7 @@ boot:SetScript("OnEvent", Apply)
 
 Settings.Page(PAGE, S):Card({
     id = "fishingKey", name = "One-Key Fishing", order = ORDER, switch = "fishingKey",
+    switchWhy = ns.GamepadWhy,
     help = "One key casts Fishing, and the same key reels in your catch.",
     rows = {
         { label = "Fishing Key", binding = BINDING, help = "Press to cast, press again when the bobber splashes." },

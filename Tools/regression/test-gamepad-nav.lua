@@ -40,11 +40,12 @@ local function Region(kind)
     end
     function r:Hide()
         if not self.shown then return end
-        if Visible(self) then
+        local was = Visible(self)
+        self.shown = false
+        if was then
             for _, c in ipairs(self.children) do Fire(c, "OnHide") end
             if self.scripts.OnHide then self.scripts.OnHide(self) end
         end
-        self.shown = false
     end
     function r:SetShown(on) if on then self:Show() else self:Hide() end end
     function r:IsShown() return self.shown end
@@ -72,6 +73,8 @@ local function Region(kind)
     function r:GetEffectiveScale() return 1 end
     function r:GetAlpha() return self.alpha end
     function r:IsEnabled() return self.enabled ~= false end
+    function r:IsMouseEnabled() return self.mouse ~= false end
+    function r:IsProtected() return self.protected == true end
     function r:GetFrameLevel() return 1 end
     function r:SetPoint(...) self.point = { ... } end
     function r:ClearAllPoints() self.point = nil end
@@ -157,6 +160,8 @@ local hidden = Button(win, 10, 120); hidden:Hide()
 local off = Button(win, 10, 110); off.enabled = false
 local faded = Button(win, 10, 105); faded.alpha = 0
 local skipped = Button(win, 10, 101); skipped.padSkip = true
+local dimmed = Button(win, 10, 103); dimmed.mouse = false
+local secure = Button(win, 10, 102); secure.protected = true
 Frame("Frame", win, 10, 50, 100, 20)
 ns.PadWindow(win, { header = 52 })
 for _, m in ipairs(made) do check("every frame of Naowh's is made parentless", m.parent == nil) end
@@ -183,7 +188,7 @@ check("down prefers the target nearest the line", ns.PadFocus() == d)
 Press("PADDUP"); Press("PADDLEFT")
 check("up and left come back", ns.PadFocus() == a)
 Press("PADDDOWN")
-check("hidden, disabled, faded and skipped widgets and plain frames are not targets", ns.PadFocus() == c)
+check("hidden, disabled, dimmed, faded, skipped and secure widgets and plain frames are not targets", ns.PadFocus() == c)
 Press("PADDDOWN")
 check("down past the last target moves on to the one beside it", ns.PadFocus() == d)
 Press("PADDLEFT")
@@ -270,6 +275,10 @@ Press("PAD3")
 check("X flips the row's switch", flips == 1 and folded == 0)
 Press("PAD1")
 check("A folds the card, the switch stays", folded == 1 and flips == 1)
+switch.mouse = false
+Press("PAD3")
+check("X leaves a switch the card holds", flips == 1)
+switch.mouse = nil
 check("the row's switch is no stop of its own", (function()
     Press("PADDRIGHT"); return ns.PadFocus() ~= switch
 end)())
@@ -391,6 +400,11 @@ lockdown = false
 input.scripts.OnEvent(input, "PLAYER_REGEN_ENABLED")
 check("after it, the open window takes the gamepad again", input:IsShown() and input.pads == true
     and ns.PadFocus() == before)
+lockdown = true
+input.scripts.OnEvent(input, "PLAYER_REGEN_DISABLED")
+check("a fight that is already locked down still hands the gamepad back", not input:IsShown())
+lockdown = false
+input.scripts.OnEvent(input, "PLAYER_REGEN_ENABLED")
 
 -- B on a plain window closes it, and the game has the gamepad again.
 Press("PAD2")

@@ -497,6 +497,7 @@ end
 
 function ns.MakeReloadButton(btn)
     btn._onClick = ReloadBlocked
+    btn.padSkip = true
     if not btn._reload then
         btn._reload = true
         btn:HookScript("OnEnter", CoverWithReload)

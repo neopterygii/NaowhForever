@@ -18,7 +18,6 @@ local LEGEND_GAP, LEGEND_PAD, LEGEND_ICON, LEGEND_SPACE, LEGEND_INNER = 6, 10, 2
 local LEGEND_TEXT = 13
 local LEGEND_H = LEGEND_ICON + 2 * LEGEND_PAD
 local STRATA = "FULLSCREEN_DIALOG"
--- The legend: every button the window reads, always the same, in the settings rows' size and the window's look.
 local HINTS = {
     { keys = { "DIRPAD" }, text = ns.L("Move") },
     { keys = { "PAD1" }, text = ns.L("Select") },
@@ -36,7 +35,6 @@ local stack = {}
 local held, input, ring, legend, fighting
 local eaten, repeatKey, repeatWait = {}, nil, 0
 
--- From the fight's first event: the gamepad goes back to the game before the lockdown.
 local function Fighting()
     return fighting or InCombatLockdown()
 end
@@ -51,8 +49,8 @@ local function EntryOf(frame)
     end
 end
 
--- A frame the gamepad can act on: a button with a click, or a widget that says what A or left/right do on it.
 local function Target(f)
+    if f:IsProtected() then return false end
     if f.padClick or f.padStep then return true end
     local kind = f:GetObjectType()
     if kind ~= "Button" and kind ~= "CheckButton" then return false end
@@ -60,7 +58,7 @@ local function Target(f)
 end
 
 local function Usable(f)
-    if not f:IsVisible() or (f:GetAlpha() or 1) <= MIN_ALPHA then return false end
+    if not f:IsVisible() or not f:IsMouseEnabled() or (f:GetAlpha() or 1) <= MIN_ALPHA then return false end
     return not f.IsEnabled or f:IsEnabled()
 end
 
@@ -82,7 +80,6 @@ local function Within(f, frame)
     return false
 end
 
--- The window's targets; with a side panel (spec.nav), only those of the area the focus is in.
 local function Targets(e)
     local out = {}
     CollectFrom(out, e.frame:GetChildren())
@@ -109,9 +106,6 @@ local function Contains(list, f)
     return false
 end
 
--- The nearest target from cur that way. One in line first (the same column for up and down, the same row for left
--- and right), else the nearest no further off the line than along it, by its distance along the press plus twice
--- how far it sits off that line, else the nearest that way at all (a lone button in a far corner).
 local function Nearest(list, cur, dx, dy)
     local l, b, w, h = Rect(cur)
     if not l then return nil end
@@ -154,7 +148,6 @@ local function TabBar(frame)
     end
 end
 
--- The tab shown in a window's tab strip (the page's own tabs), else its first; nil without tabs.
 local function ShownTab(frame)
     local bar = TabBar(frame)
     if not bar then return nil end
@@ -168,8 +161,6 @@ local function ShownTab(frame)
     return first
 end
 
--- The first focus: the tab shown when the window has tabs, else the first target in reading order (in the page out
--- of a side panel, below the window's title bar when there is one there).
 local function First(e, list)
     if e.inNav and e.spec.navFocus then
         local pick = e.spec.navFocus()
@@ -244,7 +235,6 @@ local function Focus(e, f)
     end
 end
 
--- Keeps the focus on a target still there (a page changed, a list redrawn), else the window's first.
 local function Validate(e)
     local list = Targets(e)
     if not (e.focus and Contains(list, e.focus)) then
@@ -277,8 +267,6 @@ local function Activate(f)
     if f.Click then f:Click("LeftButton") end
 end
 
--- The switch X flips: the target's own (every switch is its own), or the one it carries (a card's header: A folds
--- the card, X turns it on or off).
 local function Switch(f)
     local t = f and f.padToggle
     if t and Usable(t) then return t end
@@ -289,7 +277,6 @@ local function Back(e)
     e.frame:Hide()
 end
 
--- A slider takes left and right once A picks it, until A or B lets it go.
 local function Adjusting(e, key, f)
     if key == "PADDLEFT" or key == "PADDRIGHT" then
         f.padStep(f, key == "PADDLEFT" and -1 or 1)
@@ -298,7 +285,6 @@ local function Adjusting(e, key, f)
     end
 end
 
--- A on the side panel opens its page and moves into it; B there comes back to the panel.
 local function SwitchArea(e, inNav)
     Focus(e, nil)
     e.inNav = inNav
@@ -307,15 +293,15 @@ end
 local function Press(key)
     local e = held
     if not e then return end
-    Validate(e)
+    local list = Validate(e)
     local f = e.focus
     if e.adjusting and e.adjusting ~= f then e.adjusting = nil end
     if e.adjusting then
         Adjusting(e, key, f)
     elseif key == "PADDUP" or key == "PADDDOWN" then
-        if f then Focus(e, Nearest(Targets(e), f, 0, key == "PADDUP" and 1 or -1) or f) end
+        if f then Focus(e, Nearest(list, f, 0, key == "PADDUP" and 1 or -1) or f) end
     elseif key == "PADDLEFT" or key == "PADDRIGHT" then
-        if f then Focus(e, Nearest(Targets(e), f, key == "PADDLEFT" and -1 or 1, 0) or f) end
+        if f then Focus(e, Nearest(list, f, key == "PADDLEFT" and -1 or 1, 0) or f) end
     elseif key == "PAD1" then
         if f and f.padStep then
             e.adjusting = f
@@ -402,7 +388,6 @@ local function Ring()
     return ring
 end
 
--- The game's own icon for a gamepad button, as the player's gamepad shows it; nil without one.
 local function Atlas(key)
     local U, S = InputIconTextureSetUtility, InputIconTextureState
     if not (U and U.GetActiveInputIconButtonTextures and S) then return nil end
@@ -445,7 +430,6 @@ local function LegendLabel(i)
     return label
 end
 
--- Places one button's icon at x, or its short name where the game has no icon for it; returns the x after it.
 local function PlaceKey(icon, key, x)
     icon:ClearAllPoints()
     icon.text:ClearAllPoints()
@@ -522,7 +506,6 @@ local function Newest()
     end
 end
 
--- The newest open window holds the gamepad, out of combat; with none, the game has it all.
 function Refresh()
     local top = not Fighting() and Newest() or nil
     if held and held ~= top then
@@ -534,8 +517,8 @@ function Refresh()
     if not top then
         StopRepeat()
         eaten = {}
-        if input and input:IsShown() and not InCombatLockdown() then
-            Pads(false)
+        if input and input:IsShown() then
+            if not InCombatLockdown() then Pads(false) end
             input:Hide()
         end
         return
@@ -553,6 +536,7 @@ function Refresh()
 end
 
 local function Open(frame)
+    Input()
     local e, i = EntryOf(frame)
     if e then table.remove(stack, i) end
     e = e or { frame = frame, spec = specs[frame], inNav = specs[frame].nav ~= nil }
@@ -572,12 +556,6 @@ local function Close(frame)
     Refresh()
 end
 
--- Lets frame hold the gamepad's buttons while it is the newest Naowh window shown, under the Gamepad interface
--- style only. spec (optional): header (the title bar's height, kept out of the first focus), initial(targets) ->
--- the first focus, back() for B, nav (a side panel the focus starts in: A opens a page and moves into it, B comes
--- back) with navFocus() (the panel's button for the page shown), content (where the first focus is looked for out of
--- the side panel: the page, not the bar above it).
--- A child of Naowh's tells it shown or hidden, so the frame's own OnShow and OnHide stay its own.
 function ns.PadWindow(frame, spec)
     if not ns.GamepadStandDown() or specs[frame] then return end
     specs[frame] = spec or {}
@@ -588,7 +566,6 @@ function ns.PadWindow(frame, spec)
     if frame:IsVisible() then Open(frame) end
 end
 
--- The widget the gamepad's focus is on, while a Naowh window holds the gamepad; else nil.
 function ns.PadFocus()
     return held and held.focus or nil
 end

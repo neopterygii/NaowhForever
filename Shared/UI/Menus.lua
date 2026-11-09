@@ -213,7 +213,6 @@ local function OnGlobalMouseDown()
     Close()
 end
 
--- The gamepad's first row: the radio picked, else the first one (nil).
 local function PadFirst(targets)
     for _, row in ipairs(targets) do
         local e = row.element
@@ -221,7 +220,6 @@ local function PadFirst(targets)
     end
 end
 
--- B: a submenu goes back a level, the top closes.
 local function PadBack()
     if open and open.level.parent then
         open.level = open.level.parent
@@ -271,7 +269,6 @@ local function Show(owner, root, place)
     return token
 end
 
--- At the cursor; under the gamepad's focus while a Naowh window holds the gamepad.
 local function AtCursor(frame)
     local focus = ns.PadFocus()
     if focus then return frame:SetPoint("TOPLEFT", focus, "BOTTOMLEFT", 0, -DROP) end

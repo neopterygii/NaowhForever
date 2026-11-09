@@ -473,6 +473,14 @@ What a comment in the code used to say, in short. The house rules behind it are 
   legend is the same everywhere: every button the window reads.
   Menu rows are filled before the list is shown, so its first focus uses the current selection,
   not the previous menu's reused row.
+- `ns.PadWindow(frame, spec)` takes, all optional: `header` (the title bar's height, kept out of
+  the first focus), `initial(targets)` (the first focus), `back()` (B), `nav` (a side panel the focus
+  starts in) with `navFocus()` (its button for the page shown), and `content` (where the first focus
+  is looked for out of the side panel). A widget the mouse cannot use (`EnableMouse(false)`, as a held
+  or dimmed control is) or a protected one (Disenchant All) is no target: `Click()` from our code would
+  change what the mouse cannot, or run a secure action tainted.
+- A Reload UI button is `padSkip`: it reloads through a secure cover the cursor clicks, and our
+  own click on it can only say it is blocked.
 - Forever has Zephras Isle twice: map 2521 (under Azeroth) and map 2665 (no parent), with the
   same name, continent (2991) and bounds in the game's UiMapAssignment, so a map percentage is
   the same spot on both; the game puts players on 2665 too (the Nightclaw Druids' Wowhead data

@@ -26,7 +26,7 @@ end
 local calls = { set = 0, clear = 0, track = 0, untrack = 0 }
 local current, printed = nil, {}
 local hooks = {}
-local mapOpen = false
+local mapOpen, gamepad = false, false
 local WorldMapFrame = {}
 function WorldMapFrame:IsVisible() return mapOpen end
 function WorldMapFrame:HookScript(script, fn)
@@ -34,7 +34,10 @@ function WorldMapFrame:HookScript(script, fn)
     table.insert(hooks[script], fn)
 end
 local providers, pins, shownMap = {}, {}, 1454
-function WorldMapFrame:AddDataProvider(provider) providers[#providers + 1] = provider end
+function WorldMapFrame:AddDataProvider(provider)
+    assert(not gamepad, "Gamepad must not add a preview provider to the game map")
+    providers[#providers + 1] = provider
+end
 local canvas = {}
 function canvas:GetMapID() return shownMap end
 function canvas:RemoveAllPinsByTemplate() pins = {} end
@@ -49,7 +52,7 @@ local function CloseMap()
     for _, fn in ipairs(hooks.OnHide or {}) do fn(WorldMapFrame) end
 end
 
-local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
+local ns = { GamepadStandDown = function() return gamepad end, L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
     Print = function(msg) printed[#printed + 1] = msg end,
     WaypointPinOn = function() return true end,
 }
@@ -254,5 +257,30 @@ ns.ClearWaypoint()
 env.C_Map.SetUserWaypoint(env.UiMapPoint.CreateFromCoordinates(1454, 0.432, 0.724))
 ns.ToggleWaypoint(unpack(DM))
 Check(current ~= nil and ns.placedWaypoint.title == "The Deadmines", "one set by hand on the spot is not ours: the click places ours")
+
+gamepad = true
+frames, hooks, providers, pins = {}, {}, {}, {}
+mapOpen = false
+local padChunk = assert(loadstring(source, "Core/Waypoint.lua"))
+setfenv(padChunk, env); padChunk()
+mapOpen = true
+sets = calls.set
+Check(ns.PlaceWaypoint("First held", 1454, 20, 30), "Gamepad accepts a map-held destination")
+Check(calls.set == sets and #providers == 0 and #pins == 0, "no native write, provider or preview while open")
+ns.PlaceWaypoint("Latest held", 1454, 40, 50)
+CloseMap()
+Check(calls.set == sets + 1 and ns.placedWaypoint.title == "Latest held", "Gamepad still flushes only the latest held point")
+mapOpen = true
+clears = calls.clear
+ns.ClearWaypoint()
+Check(calls.clear == clears, "Gamepad defers clearing until the map closes")
+CloseMap()
+Check(calls.clear == clears + 1 and current == nil, "Gamepad flushes the held clear without a preview")
+mapOpen = true
+ns.PlaceWaypoint("Cancelled held", 1454, 60, 70)
+env.C_Map.SetUserWaypoint(env.UiMapPoint.CreateFromCoordinates(1454, 0.1, 0.2))
+sets = calls.set
+CloseMap()
+Check(calls.set == sets and current.position.x == 0.1, "a native replacement still cancels the held point")
 
 print(("test-waypoint-map: %d checks passed"):format(checks))

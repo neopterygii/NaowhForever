@@ -108,6 +108,7 @@ local function PreviewSpot(mapID, map, x, y)
 end
 
 local function NewPreview()
+    if ns.GamepadStandDown() then return end
     local provider = CreateFromMixins(MapCanvasDataProviderMixin)
     function provider:RemoveAllData()
         self:GetMap():RemoveAllPinsByTemplate(PREVIEW_TEMPLATE)
@@ -128,7 +129,7 @@ local function Flush()
     if not change then return end
     pending = nil
     held:UnregisterAllEvents()
-    preview:RemoveAllData()
+    if preview then preview:RemoveAllData() end
     if change == CLEAR then
         ClearNow()
     elseif change.quest then
@@ -141,7 +142,7 @@ end
 local function DropPending()
     pending = nil
     held:UnregisterAllEvents()
-    preview:RemoveAllData()
+    if preview then preview:RemoveAllData() end
 end
 
 local function Hold(change)
@@ -153,7 +154,7 @@ local function Hold(change)
         preview = NewPreview()
     end
     held:RegisterEvent("USER_WAYPOINT_UPDATED")
-    preview:RefreshAllData()
+    if preview then preview:RefreshAllData() end
 end
 
 local function SetGameWaypoint(title, map, x, y, note, icon, clearInside, details)

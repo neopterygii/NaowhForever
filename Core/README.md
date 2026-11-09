@@ -101,6 +101,11 @@ At 1, `Badges.lua` adds Naowh's Patreon to the link icons (`ns.LINKS`), after th
 
 ## Why
 
+- A waypoint held while the world map is open has no preview under the Gamepad interface
+  style. The game creates preview pins through `MapCanvasMixin.AcquirePin` and a frame pool
+  parented to its canvas, which reaches SmartNavigation's CreateFrame hook in addon code.
+  Holding, replacing, cancelling and flushing a waypoint still work without a data provider.
+
 The QoL store and the Alerts group
 - The QoL store is in the core, not in the optional QoL addon: its defaults hold the preset, the BiS,
   Gear Sets, Blessings and Group Inspect switches, the character and inspect panels, the badges

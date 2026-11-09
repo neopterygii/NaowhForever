@@ -166,6 +166,11 @@ NaowhForever_QoL/
 
 ## Why
 
+- Glimmer records gathered nodes at LOOT_READY, when the loot source GUIDs are available.
+  Loot can be taken without Glimmer receiving LOOT_OPENED, so waiting for the window event
+  can miss a vein entirely. The source must still match the readable nearby gathering
+  target; reopening the same node's loot does not count it again.
+
 - Under Forever's Gamepad interface style (`ns.GamepadStandDown()`) the features that hook, move or
   add to the game's own windows stay off and their settings say why: Zone Info and the Town Pins
   button on the world map, the Map Window, Type DELETE For You, Auto-Accept Layer Swap, Saved Quest

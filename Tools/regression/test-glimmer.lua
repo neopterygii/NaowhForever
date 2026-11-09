@@ -777,23 +777,24 @@ end
 do
     local g = Session({ enabled = true, gatheredPins = true })
     g.Login()
+    check("gathered nodes listen when loot data is ready", Listening(g, "LOOT_READY") and not Listening(g, "LOOT_OPENED"))
     check("gathered pins alone do not load the spot data", g.dataLoaded == nil)
     g.game.guid, g.game.near, g.game.px, g.game.py = GUID(COPPER), true, 0.501, 0.519
     g.game.lootFrom = "Creature-0-1-2-3-99-0000000001"
-    g.Fire("LOOT_OPENED")
+    g.Fire("LOOT_READY")
     check("a corpse looted beside a vein is not a gather", g.account.glimmerGathered == nil)
     g.game.lootFrom = nil
-    g.Fire("LOOT_OPENED")
+    g.Fire("LOOT_READY")
     local map = g.account.glimmerGathered and g.account.glimmerGathered[1429]
     local entry = map and map["1731:501:519"]
     check("a gathered vein is noted where you stand", entry ~= nil and entry.count == 1)
-    g.Fire("LOOT_OPENED")
+    g.Fire("LOOT_READY")
     check("the same loot window opened again counts once", entry.count == 1)
     g.game.guid, g.game.px, g.game.py = "GameObject-0-1-2-3-1731-0000ABCDF0", 0.503, 0.517
-    g.Fire("LOOT_OPENED")
+    g.Fire("LOOT_READY")
     check("the node grown back counts on the same pin", entry.count == 2)
     g.game.near = false
-    g.Fire("LOOT_OPENED")
+    g.Fire("LOOT_READY")
     check("not while out of reach", entry.count == 2)
     g.game.mapShown = true
     g.provider:RefreshAllData()
@@ -897,7 +898,7 @@ do
     local d = Session({ enabled = true, gatheredPins = true, minimapIcons = true })
     d.Login()
     d.game.guid, d.game.near, d.game.px, d.game.py = GUID(COPPER), true, 0.501, 0.519
-    d.Fire("LOOT_OPENED")
+    d.Fire("LOOT_READY")
     local map = d.account.glimmerGathered and d.account.glimmerGathered[1429]
     check("snapped to the spot it grows", map and map["1731:500:520"] ~= nil)
 end

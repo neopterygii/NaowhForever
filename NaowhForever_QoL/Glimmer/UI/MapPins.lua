@@ -122,7 +122,7 @@ local function Apply()
             events = CreateFrame("Frame")
             events:SetScript("OnEvent", OnLoot)
         end
-        events:RegisterEvent("LOOT_OPENED")
+        events:RegisterEvent("LOOT_READY")
     elseif events then
         events:UnregisterAllEvents()
     end

@@ -5,7 +5,8 @@
 -- a Back row, radios and checkboxes, keeps the game's responses (a checkbox stays open, a radio or button closes,
 -- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, splits a long list into columns,
 -- is made parentless then parented to the owner's top window, and closes on a click elsewhere. Group Inspect
--- adds to the game's unit menus only off the style.
+-- adds to the game's unit menus only off the style. No Naowh file but this one calls MenuUtil or Menu.GetManager.
+local TocFiles = dofile("Tools/regression/toc_files.lua")
 
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
@@ -287,5 +288,25 @@ check("under the style Group Inspect leaves the game's unit menus alone", modifi
 gamepad = false
 giNs.Apply()
 check("with keyboard and mouse it adds itself to them", modified == 3)
+
+-- The rule: only Menus.lua opens the game's menus.
+local HELPER = "Shared/UI/Menus.lua"
+local MODIFY_OK = "NaowhForever_Utilities/GroupInspect/UI/Menu.lua"
+local offenders = {}
+for _, path in ipairs(TocFiles("%.lua$")) do
+    if path ~= HELPER and not path:find("^Libs/") then
+        local f = assert(io.open(path, "rb"))
+        local source = f:read("*a")
+        f:close()
+        if source:find("MenuUtil%s*%.") or source:find("Menu%s*%.%s*GetManager") then
+            offenders[#offenders + 1] = path
+        end
+        if source:find("Menu%s*%.%s*ModifyMenu") and not (path == MODIFY_OK and source:find("GamepadStandDown")) then
+            offenders[#offenders + 1] = path
+        end
+    end
+end
+check("no Naowh file but " .. HELPER .. " calls MenuUtil or Menu.GetManager: " .. table.concat(offenders, ", "),
+    #offenders == 0)
 
 print(("menus: %d checks passed"):format(checks))

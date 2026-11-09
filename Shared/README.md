@@ -456,6 +456,9 @@ What a comment in the code used to say, in short. The house rules behind it are 
   open, a radio or button closes), opens a submenu in place with a Back row, and splits a long list
   into columns rather than scrolling. Group Inspect's entry on the game's unit menus
   (`Menu.ModifyMenu`) is left out under that style for the same reason.
+- The list stops at `MAX_COLUMNS` (3) and pages past that with a More row that wraps round: with a
+  few media packs installed the font, texture and sound dropdowns outgrow the screen, and clamping
+  cannot bring back columns past its edge. A paged list opens on the page with the picked radio.
 - Under that style our windows take the gamepad's buttons themselves (`GamepadNav.lua`). The game's
   own gamepad navigation is the code our taint blocks, so we never call into it, set no binding and
   no override binding: while one of our windows is the newest open, a frame of ours reads the

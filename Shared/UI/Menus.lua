@@ -5,12 +5,13 @@ local St = ns.Shared.Style
 
 local ROW_H, PAD = 20, 6
 local MARK, DOT, ARROW_SIZE = 12, 6, 10
-local DIVIDER_H, COLUMN_GAP = 9, 4
+local DIVIDER_H, COLUMN_GAP, MAX_COLUMNS = 9, 4, 3
 local SCREEN_SHARE = 0.8
 local DROP = 2
 local STRATA = "FULLSCREEN_DIALOG"
 local HOVER_ALPHA = 0.08
 local TEXT_BACK = ns.L("Back")
+local TEXT_MORE = ns.L("More")
 local RESPONSE_DEFAULT = { checkbox = "refresh" }
 
 local function Response(value)
@@ -80,8 +81,9 @@ end
 local function Respond(row, button)
     local e = row.element
     if not e or not e:IsEnabled() then return end
-    if e.back then open.level = e.back; return Render() end
-    if e.kind == "button" and #e.children > 0 then open.level = e; return Render() end
+    if e.page then open.page = e.page; return Render() end
+    if e.back then open.level, open.page = e.back, nil; return Render() end
+    if e.kind == "button" and #e.children > 0 then open.level, open.page = e, nil; return Render() end
     if e.kind == "title" or e.kind == "divider" then return end
     local response = RESPONSE_DEFAULT[e.kind] or "all"
     local was = open
@@ -92,7 +94,7 @@ local function Respond(row, button)
     if open ~= was then return end
     if response == "all" then return Close() end
     if response == "close" then
-        if open.level.parent then open.level = open.level.parent; return Render() end
+        if open.level.parent then open.level, open.page = open.level.parent, nil; return Render() end
         return Close()
     end
     if response == "refresh" then Render() end
@@ -171,17 +173,37 @@ local function ShowRow(row, e)
     return width
 end
 
+local function PageOf(children, size)
+    for i, e in ipairs(children) do
+        if e.kind == "radio" and e:IsSelected() then return math.ceil(i / size) end
+    end
+    return 1
+end
+
 function Render()
     if not open then return end
     local level = open.level
+    local maxH = open.root.height or (UIParent:GetHeight() * SCREEN_SHARE)
+    local perColumn = math.max(1, math.floor((maxH - 2 * PAD) / ROW_H))
     local shown = {}
     if level.parent then
         shown[1] = NewElement("button", TEXT_BACK)
         shown[1].back = level.parent
     end
-    for _, e in ipairs(level.children) do shown[#shown + 1] = e end
-    local maxH = open.root.height or (UIParent:GetHeight() * SCREEN_SHARE)
-    local perColumn = math.max(1, math.floor((maxH - 2 * PAD) / ROW_H))
+    local children = level.children
+    local first, last, more = 1, #children
+    local room = perColumn * MAX_COLUMNS - #shown
+    if #children > room then
+        local size = math.max(1, room - 1)
+        local pages = math.ceil(#children / size)
+        open.page = open.page or PageOf(children, size)
+        if open.page > pages then open.page = 1 end
+        first, last = (open.page - 1) * size + 1, math.min(open.page * size, #children)
+        more = NewElement("button", TEXT_MORE)
+        more.page = open.page % pages + 1
+    end
+    for i = first, last do shown[#shown + 1] = children[i] end
+    if more then shown[#shown + 1] = more end
     local widths, columns = {}, math.ceil(#shown / perColumn)
     for i, e in ipairs(shown) do
         rows[i] = rows[i] or MakeRow()

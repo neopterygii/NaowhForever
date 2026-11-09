@@ -236,7 +236,16 @@ local columns = {}
 for _, r in ipairs(Rows()) do columns[r.point[2]] = true end
 local count = 0
 for _ in pairs(columns) do count = count + 1 end
-check("a list taller than asked splits into columns", count == 4)
+check("a list taller than asked splits into columns, three at most", count == 3)
+check("past three columns it pages, with a More row", Row("Choice 26") and not Row("Choice 27") and Row("More"))
+Click("More")
+check("More shows the next page", Row("Choice 27") and Row("Choice 30") and not Row("Choice 1") and list:IsShown())
+Click("More")
+check("and wraps back to the first", Row("Choice 1") and not Row("Choice 27"))
+ns.DropdownMenu(owner, function(root)
+    for i = 1, 30 do root:CreateRadio("Choice " .. i, function(v) return v == 28 end, NOTHING, i) end
+end, 200)
+check("a paged list opens on the page with the chosen radio", Row("Choice 28") and not Row("Choice 1"))
 local second = ns.ContextMenu(owner, Fill)
 check("a new menu replaces the open one", second:IsShown() and not first:IsShown())
 first:Close()

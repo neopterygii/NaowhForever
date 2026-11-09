@@ -9,8 +9,10 @@ local S = { Get = function(k) return settings[k] end, Set = function(k, v) setti
 local ns = { QoLSettings = S, L = function(s) return s end, Apply = function() end,
     WaypointPinOn = function() return settings.waypoints end,
     GuideWaypointIsCurrent = function() return tracking and current and current.guide == true end,
-    ClearGuideWaypoint = function()
-        if tracking and current and current.guide then clears = clears + 1; current = nil end
+    ClearGuideWaypoint = function(d)
+        if tracking and current and current.guide and (d == nil or d == current.details) then
+            clears = clears + 1; current = nil
+        end
     end,
     RefreshWaypointPin = function() refreshes = refreshes + 1 end,
 }
@@ -121,6 +123,11 @@ Check(current == nil, "unsupported map does not create a pin")
 available = true
 rxp.UpdateMap()
 Check(current and current.x == 40, "valid guide destination recovers")
+arrow.element.x, available = 42, false
+rxp.UpdateMap()
+Check(current == nil, "a step on an unsupported map takes the last destination down")
+arrow.element.x, available = 40, true
+rxp.UpdateMap()
 local beforeUntrack = writes
 tracking = false
 rxp.UpdateGotoSteps()

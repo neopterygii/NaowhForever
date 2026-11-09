@@ -7309,6 +7309,7 @@ L["Downward Arrows"] = true
 L["Guide destination"] = true
 L["Uses your active RestedXP guide destination for the world pin."] = true
 L["Follow Polestar"] = true
+L["Guide Addons"] = true
 L["Uses Polestar's guide target for the world pin."] = true
 L["Follow Polestar is on"] = true
 L["Follow RestedXP is on"] = true

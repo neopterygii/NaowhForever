@@ -856,7 +856,7 @@ Settings.Page("QoL/Interface", S):Card({
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
-        Settings.Group("Guides"),
+        Settings.Group("Guide Addons"),
         { key = "waypointPolestar", label = "Follow Polestar", toggle = true,
           get = FollowGet("waypointPolestar"), set = FollowSet("waypointPolestar", "waypointRestedXP"),
           needs = function()

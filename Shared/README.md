@@ -452,6 +452,9 @@ What a comment in the code used to say, in short. The house rules behind it are 
   open, a radio or button closes), opens a submenu in place with a Back row, and splits a long list
   into columns rather than scrolling. Group Inspect's entry on the game's unit menus
   (`Menu.ModifyMenu`) is left out under that style for the same reason.
+- The list stops at `MAX_COLUMNS` (3) and pages past that with a More row that wraps round: with a
+  few media packs installed the font, texture and sound dropdowns outgrow the screen, and clamping
+  cannot bring back columns past its edge. A paged list opens on the page with the picked radio.
 - Forever has Zephras Isle twice: map 2521 (under Azeroth) and map 2665 (no parent), with the
   same name, continent (2991) and bounds in the game's UiMapAssignment, so a map percentage is
   the same spot on both; the game puts players on 2665 too (the Nightclaw Druids' Wowhead data

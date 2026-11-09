@@ -44,7 +44,7 @@ read_globals = {
     "bit", "BNET_CLIENT_WOW", "BNGetInfo", "BNGetNumFriends", "BreakUpLargeNumbers", "BuyMerchantItem", "BuyTrainerService",
     "canaccessallvalues", "canaccessvalue", "CanInspect", "CanLootUnit", "CanMerchantRepair",
     "ConsoleGetAllCommands", "ContainerFrameContainer", "ContainerFrameCombinedBags",
-    "GameMenuFrame", "GAMEMENU_OPTIONS", "MainMenuFrameMixin", "CanAutoSetGamePadCursorControl", "InputUtil",
+    "GameMenuFrame", "GAMEMENU_OPTIONS", "MainMenuFrameMixin", "CanAutoSetGamePadCursorControl", "InputUtil", "GamepadSharedUtility",
     "CharacterFrame", "CharacterFrameTitleText", "CharacterLevelText", "CharacterLevelTextBackground", "PaperDollFrame", "PaperDollLevelInfo", "PaperDollSidebarTabs", "CharacterHeadSlot",
     "CharacterModelScene", "CharacterStatsPaneScrollBox", "CharacterFrameRightPaneHostStoneBg", "ScrollUtil",
     "CLASS_ICON_TCOORDS", "CR_HIT_MELEE", "CR_HIT_SPELL", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance",

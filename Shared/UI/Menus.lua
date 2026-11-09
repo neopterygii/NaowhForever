@@ -292,7 +292,7 @@ local function Show(owner, root, place)
 end
 
 local function AtCursor(frame)
-    local focus = ns.PadFocus()
+    local focus = ns.PadPressFocus()
     if focus then return frame:SetPoint("TOPLEFT", focus, "BOTTOMLEFT", 0, -DROP) end
     local x, y = GetCursorPosition()
     local scale = frame:GetEffectiveScale()

@@ -32,11 +32,31 @@ local KEY_TEXT = {
 
 local specs = setmetatable({}, { __mode = "k" })
 local stack = {}
-local held, input, ring, legend, fighting
+local held, input, ring, legend, fighting, pressing
 local eaten, repeatKey, repeatWait = {}, nil, 0
 
 local function Fighting()
     return fighting or InCombatLockdown()
+end
+
+local function BindingSets()
+    local manager = GamepadSharedUtility and GamepadSharedUtility.InputBindingManager
+    return manager and manager.bindingSetStack
+end
+
+local function Snapshot()
+    local seen = {}
+    local sets = BindingSets()
+    if sets then
+        for _, set in ipairs(sets) do seen[set] = true end
+    end
+    return seen
+end
+
+local function GamePrompt(e)
+    local sets = BindingSets()
+    local top = sets and sets[#sets]
+    return top ~= nil and not top.treatBindsAsCore and not e.sets[top]
 end
 
 local function Propagate(on)
@@ -336,14 +356,16 @@ local function StopRepeat()
 end
 
 local function OnButtonDown(_, key)
-    if not held or not NAV_KEYS[key] or Fighting() then return Propagate(true) end
+    if not held or not NAV_KEYS[key] or Fighting() or GamePrompt(held) then return Propagate(true) end
     Propagate(false)
     eaten[key] = true
     if REPEATS[key] then
         repeatKey, repeatWait = key, REPEAT_WAIT
         input:SetScript("OnUpdate", OnUpdate)
     end
+    pressing = true
     Press(key)
+    pressing = false
     Propagate(false)
 end
 
@@ -540,6 +562,7 @@ local function Open(frame)
     local e, i = EntryOf(frame)
     if e then table.remove(stack, i) end
     e = e or { frame = frame, spec = specs[frame], inNav = specs[frame].nav ~= nil }
+    e.sets = Snapshot()
     stack[#stack + 1] = e
     Refresh()
 end
@@ -568,4 +591,8 @@ end
 
 function ns.PadFocus()
     return held and held.focus or nil
+end
+
+function ns.PadPressFocus()
+    return pressing and ns.PadFocus() or nil
 end

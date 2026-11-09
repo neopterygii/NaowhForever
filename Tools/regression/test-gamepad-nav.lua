@@ -100,11 +100,12 @@ end
 local UIParent = Region("Frame")
 local lockdown = false
 local gamepad = false
-local iconSets
+local iconSets, padUtil
 
 local env = setmetatable({
     UIParent = UIParent,
     InCombatLockdown = function() return lockdown end,
+    GetCursorPosition = function() return 0, 0 end,
     CreateFrame = function(kind, _, parent)
         local f = Region(kind)
         made[#made + 1] = { frame = f, parent = parent }
@@ -112,6 +113,7 @@ local env = setmetatable({
     end,
 }, { __index = function(_, k)
     if k == "InputIconTextureSetUtility" then return iconSets end
+    if k == "GamepadSharedUtility" then return padUtil end
     if k == "InputIconTextureState" then return iconSets and { Normal = 1 } end
     return _G[k]
 end })
@@ -405,6 +407,38 @@ input.scripts.OnEvent(input, "PLAYER_REGEN_DISABLED")
 check("a fight that is already locked down still hands the gamepad back", not input:IsShown())
 lockdown = false
 input.scripts.OnEvent(input, "PLAYER_REGEN_ENABLED")
+
+-- The game's own prompts (popups, ready checks) bind the gamepad's buttons through its binding stack: one that
+-- shows after the window gets them, one that was there before it does not.
+local older, prompt = {}, {}
+padUtil = { InputBindingManager = { bindingSetStack = { older } } }
+win:Hide()
+win:Show()
+local stack = padUtil.InputBindingManager.bindingSetStack
+local at = ns.PadFocus()
+Press("PADDDOWN")
+check("a binding set of the game's from before the window leaves the buttons to it", ns.PadFocus() ~= at)
+stack[2] = prompt
+at = ns.PadFocus()
+input.scripts.OnGamePadButtonDown(input, "PADDDOWN")
+check("a prompt of the game's shown over the window gets the buttons", input.propagate == true and ns.PadFocus() == at)
+input.scripts.OnGamePadButtonUp(input, "PADDDOWN")
+stack[2] = { treatBindsAsCore = true }
+Press("PADDUP")
+check("a set the game treats as core does not", ns.PadFocus() ~= at)
+stack[2] = nil
+at = ns.PadFocus()
+Press("PADDDOWN")
+check("once the prompt closes the window has them again", ns.PadFocus() ~= at and input.propagate == false)
+padUtil = nil
+
+local pressed, pressFocus = ns.PadFocus(), nil
+local onClick = pressed:GetScript("OnClick")
+pressed:SetScript("OnClick", function() pressFocus = ns.PadPressFocus() end)
+Press("PAD1")
+pressed:SetScript("OnClick", onClick)
+check("while A is pressed the focus is the press's, for a menu it opens", pressFocus == pressed)
+check("and only then", ns.PadPressFocus() == nil and ns.PadFocus() == pressed)
 
 -- B on a plain window closes it, and the game has the gamepad again.
 Press("PAD2")

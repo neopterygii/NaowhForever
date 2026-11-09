@@ -484,6 +484,15 @@ What a comment in the code used to say, in short. The house rules behind it are 
   change what the mouse cannot, or run a secure action tainted.
 - A Reload UI button is `padSkip`: it reloads through a secure cover the cursor clicks, and our
   own click on it can only say it is blocked.
+- The game's own prompts (popups, ready checks, invites) bind the gamepad's buttons through its
+  binding stack (`GamepadSharedUtility.InputBindingManager`, only read). A window notes the sets on
+  that stack when it opens, and while a newer one is on top (not `treatBindsAsCore`) the buttons go
+  through to the game: the newest of ours and the game's has them, so a popup over our window takes
+  A and B, while the bags opened before it do not.
+- Naowh's modals (`ns.MakeModal`) register their panel, B closing them as Escape does. Their first
+  focus is the No or Cancel button, so A twice never confirms a reset.
+- A right-click menu opens under the gamepad's focus only while an A press is being handled
+  (`ns.PadPressFocus`); one the gamepad cursor opens opens at the cursor.
 - Forever has Zephras Isle twice: map 2521 (under Azeroth) and map 2665 (no parent), with the
   same name, continent (2991) and bounds in the game's UiMapAssignment, so a map percentage is
   the same spot on both; the game puts players on 2665 too (the Nightclaw Druids' Wowhead data

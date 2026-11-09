@@ -95,6 +95,7 @@ local ns = {
     GamepadStandDown = function() return gamepad end,
     PadWindow = function(frame, spec) pad.frame, pad.spec = frame, spec end,
     PadFocus = function() return pad.focus end,
+    PadPressFocus = function() return pad.pressing and pad.focus end,
     Font = function(parent) return parent:CreateFontString() end,
     Solid = function(parent) return parent:CreateTexture() end,
     Border = function() return {} end,
@@ -254,7 +255,7 @@ second:Close()
 check("its own handle can", not list:IsShown())
 
 -- With the gamepad (GamepadNav.lua): the list holds it, B goes back a level then closes, and a right-click menu
--- opens under the gamepad's focus.
+-- opened by an A press opens under the gamepad's focus.
 check("the list holds the gamepad like a window", pad.frame == list and pad.spec.initial and pad.spec.back)
 ns.ContextMenu(owner, Fill)
 check("titles, dividers and disabled rows are not the gamepad's", Row("Title").padSkip and Row("Off").padSkip
@@ -267,9 +268,12 @@ pad.spec.back()
 check("B at the top closes the list", not list:IsShown())
 pad.focus = Region("Button")
 ns.ContextMenu(owner, Fill)
-check("a right-click menu opens under the gamepad's focus", list.point[1] == "TOPLEFT" and list.point[2] == pad.focus
-    and list.point[3] == "BOTTOMLEFT")
-pad.focus = nil
+check("a menu the cursor opens opens at the cursor, wherever the gamepad's focus is", list.point[2] == UIParent)
+pad.pressing = true
+ns.ContextMenu(owner, Fill)
+check("a right-click menu an A press opens opens under the gamepad's focus", list.point[1] == "TOPLEFT"
+    and list.point[2] == pad.focus and list.point[3] == "BOTTOMLEFT")
+pad.focus, pad.pressing = nil, nil
 handle = ns.ContextMenu(owner, Fill)
 handle.Close()
 

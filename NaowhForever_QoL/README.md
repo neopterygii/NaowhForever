@@ -1107,7 +1107,7 @@ NaowhForever_QoL/
   the countdown reads but `TransportTimes.Latest` (what is sent and answered) skips, and your own
   next ride of that ship clears the mark.
 - Share Timings (`transportShare`) is on by default under the timers, as Share My Score is under the
-  Naowh Score. Off, nothing is sent or answered, and the `NaowhShips` prefix and its events are not
+  Gear Score. Off, nothing is sent or answered, and the `NaowhShips` prefix and its events are not
   registered, so others' timings are not received either: hearing them needs the prefix.
 - The message carries the sender's GUID, checked with `ns.SenderIs` (Core/Senders.lua) as Naowh
   Score does. Forever is one world: the ships stand at the same place on every shard, so a timing
@@ -1287,6 +1287,10 @@ NaowhForever_QoL/
 ### Waypoint Pin
 - Quest Objectives and Downward Arrows are independent switches, initially off. Objectives come from the tracked quest or guide context and refresh on quest-log changes, which do not bring back a pin that went inside the quest's area. The three chevrons use the existing shared arrow art and disappear in off-screen and arrival modes.
 - Follow RestedXP is initially off and uses the shared guide waypoint feed. Guide destinations skip our manual-pin auto-clear; if native navigation ends at arrival, the pin waits for the next guide destination. RestedXP's own arrow stays shown throughout. A manual pin temporarily takes priority until the next guide destination.
+- Follow Polestar is initially off and uses the same feed, from Polestar's public `Polestar.Nav.API` (Core/Integrations/Polestar/README.md). Polestar's Next Stop, on with it, pins the end of the leg Polestar's arrow is on (the flight master, then the landing) rather than the end of the trip.
+- One guide feeds the pin at a time: Follow Polestar and Follow RestedXP each grey out while the other is on and its guide is loaded, and while their own guide is missing or too old, with the reason on the row. A switch that is on is never greyed, so it can always be turned off. Turning one on turns the other off, even one whose guide is not loaded now: left on, it would come back on beside this one once its guide is turned on again. A switch left on whose guide is missing feeds nothing, holds the other back from nothing, and notes why on its row.
+- The Navigator Bar's clear button lets go of a guide's destination through `ns.DismissGuideWaypoint`, so the feed that placed it can tell its guide (Polestar hides that goal until it moves on); any other waypoint clears as before.
+- The card's rows are in two groups, Guides and Display, so the two-column layout pairs Polestar's Next Stop with Follow Polestar, not with Follow RestedXP.
 - It follows the game's navigation frame (`C_Navigation`), so quests, your corpse and map pins get it as well as `ns.PlaceWaypoint`'s spots, which it names. A user waypoint counts as ours when it lies within `SAME_SPOT` (map percent) of `ns.placedWaypoint`.
 - A map pin's or corpse's navigation point is the spot on the ground: the ring at the line's foot goes there and the pin stands above it. A quest giver's is over their head, where the pin goes as it is, with no line down.
 - The game clears a map pin on arrival, but it keeps tracking a quest, and Forever reports a quest reached only right on its point. So for a tracked quest the pin and cue go within `QUEST_NEAR` (40 yards) of its point, the quest's area or the quest giver, and come back past `QUEST_LEAVE` (55), so walking about the area does not make them flicker. The game has no call that says you are inside a quest's area (Forever's QuestLog and Navigation docs: only map points, `IsOnMap` and a display state), so the distance stands in for it. Other targets use Arrival Distance (`waypointArrive`, 5 yards by default) and come back `LEAVE_MARGIN` (2) yards past it. The navigator stays.
@@ -1301,6 +1305,16 @@ NaowhForever_QoL/
 - Nothing tracked means cleared or reached. A clear can leave the navigation frame up with no NAVIGATION_FRAME_DESTROYED, which used to leave the navigator showing.
 - The game's own marker keeps setting its frame's alpha, so Hide the Game's Marker fades its parts (`GAME_PARTS`) instead.
 - With no waypoint, Unlock Mode still shows the navigator on a sample, to place it by.
+- Pin Style (Forever skin only, Classic by default) draws the game's own waypoint art by atlas name
+  (`GAME.ART`, `GAME.ARROW`): the map's waypoint pin for Diamond, the tracked quest blob for Dot,
+  and `Navigation-Tracked-Arrow` for every arrow. None has a `-c60` twin, so plain `SetAtlas`
+  works, and they stay out of `FOREVER_ART_FILES`, which is pinned to one build. The game has no
+  hex marker, so Hex is drawn like Forever's frames instead: a dark rim, a bronze bevel lit from
+  above, a near-black body and a gold gem (the body turns gold on arrival). The art keeps its own
+  proportions and is never tinted (a vertex color would muddy its gold). The game's arrow points
+  up and our chevron right, so it turns a quarter less (`GAME.QUARTER`). Each piece is its own
+  texture, made the first time Forever is used, so Classic builds none of it and switching back
+  leaves no atlas on a drawn texture. A client without the arrow atlas keeps the drawn pin.
 
 ### Player History
 - `ns.PlayerHistory.Of(guid)` is nil or `{ name, classFile, firstSeen, lastSeen, groups, dungeons, raids, sessions = { { at, seconds, kind, place, instance } }, chats = { { at, mine, channel, text } } }`, lists newest first; `Note(guid)` is nil or `{ text, tag, at, name }`; also `On()`, `Forget(guid)`, `SetNote(guid, text, tag, name)` and `TAGS`. What they return is the saved data itself: read it, never change it. The Naowh Inspect panel reads it.

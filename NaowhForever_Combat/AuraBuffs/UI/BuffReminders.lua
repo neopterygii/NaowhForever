@@ -25,7 +25,7 @@ local KEYS = {
     consumablesMaxHide = true, raidBuffsMaxHide = true, personalBuffsMaxHide = true,
     onlyIfCarried = true, carriedPicks = true, hideResting = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
     buffIconMode = true, raidBuffRange = true, raidBuffRangeHide = true, hideBlessingsOnPaladin = true,
-    personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true, leftClickMainHand = true, sleepingBag = true,
+    personalBuffs = true, personalBuffPicks = true, thornsTankOnly = true, weaponEnhancements = true, leftClickMainHand = true, sleepingBag = true,
     buffsFont = true, buffsFontSize = true, buffsOutline = true, buffsBorderColor = true,
     buffGlow = true, buffGlowType = true, buffGlowColor = true, buffGlowLines = true, buffGlowThickness = true,
     buffGlowSpeed = true,
@@ -135,7 +135,7 @@ end
 local function SetAction(cell, entry)
     local slot = entry.slot and S.Get("leftClickMainHand") and MAIN_HAND or entry.slot
     if entry.item and slot then ItemBar.SetWeapon(cell, entry.item, slot) else ItemBar.SetItem(cell, entry.item) end
-    cell.slot = slot
+    cell.slot, cell.unit = slot, entry.unit
     cell:SetAttribute("spell1", entry.spell)
     cell:SetAttribute("unit1", entry.unit)
     if entry.spell then cell:SetAttribute("type1", "spell") elseif not entry.item then cell:SetAttribute("type1", nil) end
@@ -247,6 +247,12 @@ local function FadeWeapons()
     end
 end
 
+local function FadeTarget()
+    for _, cell in ipairs(cells) do
+        if cell:IsShown() and cell.unit == "target" then cell:SetAlpha(0) end
+    end
+end
+
 local function Sent(target, castGUID, spellID)
     if Secret(castGUID) or Secret(spellID) then
         sentGUID = nil
@@ -269,6 +275,7 @@ local function OnEvent(_, event, unit, arg2, arg3, arg4)
     if event == "PLAYER_REGEN_DISABLED" then
         StopRange()
         Menu.Hide()
+        FadeTarget()
         return
     end
     if event == "PLAYER_REGEN_ENABLED" and held then return Apply() end
@@ -305,7 +312,7 @@ local function Place()
 end
 
 local function Listen()
-    if S.Get("raidBuffs") then
+    if S.Get("raidBuffs") or R.WatchesTanks() then
         events:RegisterEvent("UNIT_AURA")
         events:RegisterEvent("GROUP_ROSTER_UPDATE")
     elseif R.WatchesTarget() then
@@ -314,6 +321,7 @@ local function Listen()
         events:RegisterUnitEvent("UNIT_AURA", "player")
     end
     if R.WatchesTarget() then events:RegisterEvent("PLAYER_TARGET_CHANGED") end
+    if R.WatchesTanks() then events:RegisterEvent("PLAYER_ROLES_ASSIGNED") end
     if R.WatchesLevel() then events:RegisterEvent("PLAYER_LEVEL_UP") end
     if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
         events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")

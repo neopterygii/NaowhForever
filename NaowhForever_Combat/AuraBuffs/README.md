@@ -104,6 +104,13 @@ NaowhForever_Combat/AuraBuffs/
     missing (`single`).
   - one sent at you, when SENT's `target` is readable (it is `ConditionalSecret`) and is your name. A
     raid buff fades on that only while solo (`solo`).
+- Thorns Only on Tank (`thornsTankOnly`, off by default) is Robin's ask. Solo, Thorns reminds you of your
+  own, as before (Hide While Resting still applies). In a group it reminds you only of the tanks (the Tank
+  role or a raid main tank, `IsTank`): a click casts it on the first tank missing it, with the count when more
+  than one is. A group with no tank gets no Thorns reminder, Robin's call: EllesmereUI's raid frames fall back
+  to you there. A tank offline, dead or out of sight cannot be read or reached, so it shows nothing. While it is on, the row follows every group member's `UNIT_AURA`,
+  `GROUP_ROSTER_UPDATE` and `PLAYER_ROLES_ASSIGNED`, as Raid Buff Reminders do. A cast at you fades it
+  only when you are the one tank missing it (`solo`).
 - A weapon reminder fades once every weapon it covers is enchanted (`MissingSlot`), re-read on
   `WEAPON_ENCHANT_CHANGED` and `UNIT_INVENTORY_CHANGED`: a poison on one hand leaves the other's.
   `C_Item.GetWeaponEnchantInfo` returns no secrets.
@@ -195,7 +202,9 @@ NaowhForever_Combat/AuraBuffs/
   width changed.
 - With Only If I Carry One off, food, flasks and elixirs still get a reminder: any Well Fed, flask or elixir of the
   classic lists in `D.DEFAULT_GROUPS` (no battle/guardian split on Forever, so one elixir reminder, Battle
-  Elixir). Food's icon is the carried item's, else the last buff
+  Elixir). Food has no item list, so the bags are read for it as with the pick on (`D.FOOD_SPELLS`) and the best
+  buff food carried is offered: once the hand-made list was gone, Drjay's food reminder showed while he carried
+  food, but a click ate nothing. Food's icon is the carried item's, else the last buff
   food eaten (`lastFoodIcon` in the account settings, taken on `UNIT_SPELLCAST_SUCCEEDED` from the bag item
   with that use spell, else the spell's own texture), else Well Fed's. Weapon Enhancement Reminder (off by default) asks for a stone or
   oil (`D.WEAPON_ITEMS`) on each equipped weapon, an off hand only when it is a weapon, and defers to a class's
@@ -254,7 +263,8 @@ NaowhForever_Combat/AuraBuffs/
   group member of that class can cast it. A class with no personal buff (paladin) still gets the
   group for the others.
 - Hunter's Mark is asked for only with a hostile elite, rare elite or boss targeted, read from the
-  target's debuffs; like every reminder it holds what it showed once combat starts.
+  target's debuffs. Unlike the others it fades when combat starts: in combat the target can change and
+  another hunter can mark it, and neither can be read, so a held icon asked for marks already up (Robin).
 - Aspect: any aspect counts, so Cheetah or Pack while travelling does not remind. Another hunter's
   Pack or Wild lands on you too, so the family is `own`: only an aura whose `sourceUnit` is the
   player counts. The IDs are every rank Forever has, from the Training data (game build

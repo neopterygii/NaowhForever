@@ -107,6 +107,7 @@ ns.FEATURES = {
         crosshair = false,
         petTracker = false,
         chatZones = false,
+        chatZonesChat = false,
         finderRoles = false,
         mouseRing = false,
         gcdTracker = false,
@@ -203,6 +204,9 @@ ns.FEATURES = {
         disenchantDeals = false,
         tradeEnchants = false,
     },
+    market = {
+        enabled = false,
+    },
     macros = {
         enabled = true,
         health = true,
@@ -227,6 +231,7 @@ ns.FEATURES = {
         hideBlessingsOnPaladin = false,
         raidBuffRangeHide = false,
         personalBuffs = true,
+        thornsTankOnly = false,
         weaponEnhancements = false,
         leftClickMainHand = false,
         sleepingBag = false,
@@ -282,6 +287,7 @@ ns.FEATURES = {
     },
     groupFinder = {
         enabled = false,
+        gameKey = false,
     },
     account = {
         gameMenuButton = true,

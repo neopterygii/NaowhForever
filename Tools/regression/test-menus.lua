@@ -21,7 +21,7 @@ local function Region(kind)
     function r:SetScript(name, fn) self.scripts[name] = fn end
     function r:GetScript(name) return self.scripts[name] end
     function r:SetParent(p) self.parent = p end
-    function r:GetParent() return self.parent end
+    function r:GetParent() return rawget(self, "parent") end
     function r:SetHeight(h) self.h = h end
     function r:GetHeight() return self.h end
     function r:SetWidth(w) self.w = w end
@@ -209,6 +209,17 @@ check("a click on the list keeps it", list:IsShown())
 list.over = false
 list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
 check("a click elsewhere closes it", not list:IsShown())
+
+ns.ContextMenu(owner, Fill)
+list.scripts.OnHide(list)
+check("hidden with its window, it is closed, not left open behind it", not list:IsShown() and not ns.MenuOpen())
+
+ns.ContextMenu(UIParent, Fill)
+list.over = false
+UIParent.over = true
+list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
+check("a menu owned by UIParent still closes on a click elsewhere", not list:IsShown())
+UIParent.over = false
 
 local first = ns.DropdownMenu(owner, function(root)
     for i = 1, 30 do root:CreateRadio("Choice " .. i, function() return false end, NOTHING, i) end

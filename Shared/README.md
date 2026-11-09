@@ -459,6 +459,13 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - The list stops at `MAX_COLUMNS` (3) and pages past that with a More row that wraps round: with a
   few media packs installed the font, texture and sound dropdowns outgrow the screen, and clamping
   cannot bring back columns past its edge. A paged list opens on the page with the picked radio.
+  Paging keeps each page's rows available to the gamepad's existing focus navigation without a
+  scroll viewport; it does not use `UI.SlimScroll`. The list is also held to `SCREEN_SHARE` (80%) of
+  the screen's width and height at its own scale. Columns share the available width; a clipped
+  label shows its full text on hover. Three long media names can otherwise exceed the screen.
+- `MenuOpen` checks only our list under the Gamepad style, including while it is closed: tooltip
+  helpers call it too, and must not consult the game's menu manager on that path. Keyboard and
+  mouse still ask the game's manager.
 - Under that style our windows take the gamepad's buttons themselves (`GamepadNav.lua`). The game's
   own gamepad navigation is the code our taint blocks, so we never call into it, set no binding and
   no override binding: while one of our windows is the newest open, a frame of ours reads the

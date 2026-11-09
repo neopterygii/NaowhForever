@@ -3,11 +3,11 @@
 -- the Gamepad interface style it opens none of the game's menus (they run the menu's close tainted and the gamepad
 -- action bar's protected call is then forbidden): Naowh's own list shows titles, dividers, buttons, submenus with
 -- a Back row, radios and checkboxes, keeps the game's responses (a checkbox stays open, a radio or button closes,
--- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, splits a long list into columns,
--- is made parentless then parented to the owner's top window, and closes on a click elsewhere. It holds the
--- gamepad like a window (B goes back a level, then closes) and a right-click menu opens under the gamepad's
--- focus. Group Inspect adds to the game's unit menus only off the style. No Naowh file but this one calls
--- MenuUtil or Menu.GetManager.
+-- MenuResponse.Open keeps it open), skips disabled rows, shows a row's tooltip, pages after three columns,
+-- bounds scaled geometry and clipped labels, and closes on a click elsewhere or when its owner hides. Its
+-- list, rows and checkbox boxes are made parentless; drawing helpers may create descendants of our own list.
+-- Group Inspect adds to the game's unit menus only off the style.
+
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 
 local checks = 0
@@ -15,33 +15,51 @@ local function check(label, value) assert(value, label); checks = checks + 1 end
 
 local NOTHING = function() end
 
+local function Hidden(region)
+    if region.scripts.OnHide then region.scripts.OnHide(region) end
+    for child in pairs(region.children) do if child.shown then Hidden(child) end end
+end
+
 local function Region(kind)
-    local r = { kind = kind, shown = kind ~= "Frame" and kind ~= "Button", scripts = {}, events = {}, h = 0, w = 0 }
+    local r = { kind = kind, shown = kind ~= "Frame" and kind ~= "Button",
+        scripts = {}, events = {}, children = {}, h = 0, w = 0 }
     function r:Show() local was = self.shown; self.shown = true; if not was and self.scripts.OnShow then self.scripts.OnShow(self) end end
-    function r:Hide() local was = self.shown; self.shown = false; if was and self.scripts.OnHide then self.scripts.OnHide(self) end end
+    function r:Hide() local was = self.shown; self.shown = false; if was then Hidden(self) end end
     function r:SetShown(on) if on then self:Show() else self:Hide() end end
     function r:IsShown() return self.shown end
+    function r:IsVisible() local p = rawget(self, "parent"); return self.shown and (not p or p:IsVisible()) end
     function r:SetScript(name, fn) self.scripts[name] = fn end
     function r:GetScript(name) return self.scripts[name] end
-    function r:SetParent(p) self.parent = p end
+    function r:SetParent(p)
+        local old = rawget(self, "parent")
+        if old then old.children[self] = nil end
+        self.parent = p
+        if p then p.children[self] = true end
+    end
     function r:GetParent() return rawget(self, "parent") end
     function r:SetHeight(h) self.h = h end
     function r:GetHeight() return self.h end
     function r:SetWidth(w) self.w = w end
+    function r:GetWidth() return self.w end
     function r:SetSize(w, h) self.w, self.h = w, h end
     function r:SetPoint(...) self.point = { ... } end
     function r:ClearAllPoints() self.point = nil end
     function r:SetText(t) self.text = t end
     function r:GetText() return self.text end
     function r:GetStringWidth() return #(self.text or "") * 6 end
+    function r:IsTruncated() return self:GetStringWidth() > self.w end
+    function r:SetWordWrap(on) self.wrap = on end
     function r:SetTextColor(cr, cg, cb) self.color = { cr, cg, cb } end
     function r:SetTexture(t) self.texture = t end
     function r:RegisterEvent(e) self.events[e] = true end
     function r:UnregisterEvent(e) self.events[e] = nil end
     function r:IsMouseOver() return self.over == true end
-    function r:GetEffectiveScale() return 1 end
-    function r:CreateTexture() return Region("Texture") end
-    function r:CreateFontString() return Region("FontString") end
+    function r:GetEffectiveScale()
+        local p = rawget(self, "parent")
+        return (rawget(self, "scale") or 1) * (p and p:GetEffectiveScale() or 1)
+    end
+    function r:CreateTexture() local t = Region("Texture"); t:SetParent(self); return t end
+    function r:CreateFontString() local t = Region("FontString"); t:SetParent(self); return t end
     return setmetatable(r, { __index = function() return NOTHING end })
 end
 
@@ -49,16 +67,23 @@ local made = {}
 local UIParent = Region("Frame")
 UIParent.shown = true
 UIParent.h = 1000
+UIParent.w = 1600
 local tooltip = Region("Frame")
 function tooltip:SetOwner(owner) self.owner = owner end
 local gamepad = false
-local game = { contexts = 0, opened = 0 }
+local game = { contexts = 0, opened = 0, managers = 0 }
+local parentedOutsideList = false
 
 local env = setmetatable({
     UIParent = UIParent, GameTooltip = tooltip,
     CreateFrame = function(kind, _, parent)
         local f = Region(kind)
-        f.parent = parent
+        f:SetParent(parent)
+        if parent then
+            local ancestor = parent
+            while ancestor and ancestor ~= made[1].frame do ancestor = ancestor:GetParent() end
+            if not ancestor then parentedOutsideList = true end
+        end
         made[#made + 1] = { frame = f, parent = parent }
         return f
     end,
@@ -77,13 +102,15 @@ local env = setmetatable({
     MenuVariants = { GetDefaultMenuMixin = NOTHING },
     AnchorUtil = { CreateAnchor = function(...) return { ... } end },
     Menu = { GetManager = function()
+        assert(not gamepad, "game manager consulted under Gamepad style")
+        game.managers = game.managers + 1
         return {
             OpenMenu = function(_, owner, desc, anchor)
                 game.opened = game.opened + 1
                 game.dropOwner, game.desc, game.anchor = owner, desc, anchor
                 return "game dropdown"
             end,
-            IsAnyMenuOpen = function() return false end,
+            IsAnyMenuOpen = function() return game.menuOpen == true end,
         }
     end },
 }, { __index = _G })
@@ -94,12 +121,15 @@ local ns = {
     THEME = T, L = function(s) return s end,
     GamepadStandDown = function() return gamepad end,
     PadWindow = function(frame, spec) pad.frame, pad.spec = frame, spec end,
-    PadFocus = function() return pad.focus end,
     PadPressFocus = function() return pad.pressing and pad.focus end,
     Font = function(parent) return parent:CreateFontString() end,
     Solid = function(parent) return parent:CreateTexture() end,
-    Border = function() return {} end,
-    Hairline = NOTHING,
+    Border = function(parent)
+        local border = env.CreateFrame("Frame", nil, parent)
+        env.CreateFrame("Frame", nil, border)
+        return { _frame = border }
+    end,
+    Hairline = function(texture) env.CreateFrame("Frame", nil, texture:GetParent()) end,
     Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { Arrow = function(p) return p:CreateTexture() end } },
 }
 env._G = { NaowhForever = ns }
@@ -109,9 +139,11 @@ chunk()
 
 -- Keyboard and mouse: the game's menus, unchanged.
 local window = Region("Frame")
-window.parent = UIParent
+window:SetParent(UIParent)
+window:Show()
 local owner = Region("Button")
-owner.parent = window
+owner:SetParent(window)
+owner:Show()
 local function Generator(_, root) root:CreateButton("A", NOTHING) end
 check("a context menu with keyboard and mouse is the game's",
     ns.ContextMenu(owner, Generator) == "game menu" and game.owner == owner and game.generator == Generator)
@@ -122,10 +154,15 @@ check("a dropdown with keyboard and mouse is the game's, under its owner and as 
     and game.anchor[1] == "TOPLEFT" and game.anchor[2] == owner and game.anchor[3] == "BOTTOMLEFT")
 check("nothing of Naowh's own list is made with keyboard and mouse", #made == 0 and not ns.MenuOpen())
 
+game.menuOpen = true
+check("keyboard and mouse status still reports the game's open menu", ns.MenuOpen())
+game.menuOpen = false
+
 -- Under the Gamepad interface style: Naowh's own list.
 gamepad = true
-game.contexts, game.opened = 0, 0
+game.contexts, game.opened, game.managers = 0, 0, 0
 local log = {}
+check("a closed menu status does not consult the game manager under the style", not ns.MenuOpen() and game.managers == 0)
 local checked, picked = false, "b"
 local function Fill(_, root)
     root:CreateTitle("Title")
@@ -146,11 +183,18 @@ local handle = ns.ContextMenu(owner, Fill)
 local list = handle and made[1] and made[1].frame
 check("under the style no game menu opens", game.contexts == 0 and game.opened == 0)
 check("the list is made parentless", made[1].parent == nil)
-local parentless = true
-for i = 2, #made do
-    if made[i].parent ~= nil then parentless = false end
+local parentless, boxes, ownDescendants = true, 0, 0
+for _, m in ipairs(made) do
+    local parent = m.frame.parent
+    if m.frame.kind == "Button" and parent == list and m.parent ~= nil then parentless = false end
+    if parent and m.frame == parent.box then
+        boxes = boxes + 1
+        if m.parent ~= nil then parentless = false end
+    end
+    if m.parent ~= nil then ownDescendants = ownDescendants + 1 end
 end
-check("every row is made parentless too", parentless)
+check("rows and checkbox boxes are created parentless before attachment", parentless and boxes > 0)
+check("the drawing-helper stubs exercise parented descendants inside our list", ownDescendants > 0 and not parentedOutsideList)
 check("then parented to the owner's top window", list.parent == window)
 check("it is open, and says so", list:IsShown() and ns.MenuOpen() and handle:IsShown())
 check("it opens at the cursor", list.point and list.point[1] == "TOPLEFT" and list.point[4] == 300 and list.point[5] == 400)
@@ -217,9 +261,17 @@ list.over = false
 list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
 check("a click elsewhere closes it", not list:IsShown())
 
+local hiddenHandle = ns.ContextMenu(owner, Fill)
+Row("Off").scripts.OnEnter(Row("Off"))
+window:Hide()
+check("hiding the owner's window clears the list, handle, tooltip and click listener",
+    not list:IsShown() and not ns.MenuOpen() and not hiddenHandle:IsShown()
+    and not tooltip:IsShown() and not list.events.GLOBAL_MOUSE_DOWN)
+window:Show()
+check("showing the owner's window cannot reopen a stale menu", not list:IsShown() and not hiddenHandle:IsShown())
 ns.ContextMenu(owner, Fill)
-list.scripts.OnHide(list)
-check("hidden with its window, it is closed, not left open behind it", not list:IsShown() and not ns.MenuOpen())
+list.scripts.OnEvent(list, "GLOBAL_MOUSE_DOWN")
+check("a fresh menu still closes on click-away after its owner reappears", not list:IsShown())
 
 ns.ContextMenu(UIParent, Fill)
 list.over = false
@@ -247,7 +299,60 @@ ns.DropdownMenu(owner, function(root)
     for i = 1, 30 do root:CreateRadio("Choice " .. i, function(v) return v == 28 end, NOTHING, i) end
 end, 200)
 check("a paged list opens on the page with the chosen radio", Row("Choice 28") and not Row("Choice 1"))
+
+local function Reachable(total)
+    local seen, pages, start = {}, 0, nil
+    while pages <= total do
+        local firstData
+        for _, r in ipairs(Rows()) do
+            local e = r.element
+            if e and e.data then
+                seen[e.data] = true
+                firstData = firstData or e.data
+            end
+        end
+        if start and firstData == start then break end
+        start = start or firstData
+        pages = pages + 1
+        Click("More")
+    end
+    local n = 0
+    for _ in pairs(seen) do n = n + 1 end
+    return n == total and pages > 1 and pages < total
+end
+local function Huge(i) return "M" .. i .. ("W"):rep(70) end
+local function FillHuge(root)
+    for i = 1, 90 do root:CreateRadio(Huge(i), function(v) return v == 61 end, NOTHING, i) end
+end
+local function Bounded(scale)
+    if list:GetWidth() > UIParent:GetWidth() / scale * 0.8 then return false end
+    for _, r in ipairs(Rows()) do
+        if r.text.w < 1 or r.text.w > r.w then return false end
+    end
+    return true
+end
+window.scale = 1
+ns.DropdownMenu(owner, FillHuge, 200)
+check("three very long names fit the viewport, clipped rather than spilling off it",
+    Bounded(1) and Row(Huge(61)) and not Row(Huge(1)) and Row(Huge(61)).dot:IsShown())
+do
+    local r = Row(Huge(61))
+    r.scripts.OnEnter(r)
+    check("a clipped label still gives its full text on hover", tooltip.owner == r and tooltip:GetText() == Huge(61) and tooltip:IsShown() and r.text:IsTruncated())
+end
+check("every very long entry is reachable by More, and the pages wrap", Reachable(90))
+window.scale = 2
+ns.DropdownMenu(owner, FillHuge, 200)
+check("a larger UI scale narrows the bound to what the screen shows", Bounded(2) and list:GetWidth() <= 640)
+check("and still pages every entry", Reachable(90))
+ns.DropdownMenu(owner, FillHuge, 10000)
+check("an oversized height request is capped to the scaled screen height", list:GetHeight() <= UIParent:GetHeight() * 0.8 / 2)
+window.scale = 1
 local second = ns.ContextMenu(owner, Fill)
+check("a reused row measures its short label afresh and needs no clipped tooltip", not Row("Run").text:IsTruncated())
+tooltip:Hide()
+Row("Run").scripts.OnEnter(Row("Run"))
+check("a short label without its own tooltip does not show one", not tooltip:IsShown())
 check("a new menu replaces the open one", second:IsShown() and not first:IsShown())
 first:Close()
 check("an old handle cannot close the new menu", second:IsShown())
@@ -326,6 +431,7 @@ check("under the style Group Inspect leaves the game's unit menus alone", modifi
 gamepad = false
 giNs.Apply()
 check("with keyboard and mouse it adds itself to them", modified == 3)
+
 
 -- The rule: only Menus.lua opens the game's menus.
 local HELPER = "Shared/UI/Menus.lua"

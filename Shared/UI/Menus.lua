@@ -102,9 +102,12 @@ end
 
 local function RowEnter(row)
     local e = row.element
-    if not (e and e.tooltip) then return end
+    if not e then return end
+    local clipped = row.text:IsTruncated()
+    if not (e.tooltip or clipped) then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    e.tooltip(GameTooltip, e)
+    if clipped then GameTooltip:SetText(e.text) end
+    if e.tooltip then e.tooltip(GameTooltip, e) end
     GameTooltip:Show()
 end
 
@@ -121,6 +124,7 @@ local function MakeRow()
     row.hover:SetAllPoints()
     row.text = ns.Font(row, St.TEXT_SIZE)
     row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
     row.mark = row:CreateTexture(nil, "ARTWORK")
     row.mark:SetSize(MARK, MARK)
     row.mark:SetPoint("LEFT", PAD, 0)
@@ -163,12 +167,14 @@ local function ShowRow(row, e)
     row:SetHeight(kind == "divider" and DIVIDER_H or ROW_H)
     local left = (kind == "radio" or kind == "checkbox") and PAD + MARK + PAD or PAD
     row.text:ClearAllPoints()
+    row.text:SetWidth(0)
     row.text:SetPoint("LEFT", left, 0)
     row.text:SetText(e.text or "")
     local color = (kind == "title" or not on) and T.muted or T.fg
     row.text:SetTextColor(color.r, color.g, color.b, 1)
-    local width = left + math.ceil(row.text:GetStringWidth()) + PAD
-    if row.arrow:IsShown() then width = width + ARROW_SIZE + PAD end
+    row.textInset = left + PAD
+    if row.arrow:IsShown() then row.textInset = row.textInset + ARROW_SIZE + PAD end
+    local width = math.ceil(row.text:GetStringWidth()) + row.textInset
     row:Show()
     return width
 end
@@ -183,7 +189,10 @@ end
 function Render()
     if not open then return end
     local level = open.level
-    local maxH = open.root.height or (UIParent:GetHeight() * SCREEN_SHARE)
+    local scale = UIParent:GetEffectiveScale() / list:GetEffectiveScale()
+    local screenH = UIParent:GetHeight() * scale * SCREEN_SHARE
+    local maxH = math.min(open.root.height or screenH, screenH)
+    local maxW = UIParent:GetWidth() * scale * SCREEN_SHARE
     local perColumn = math.max(1, math.floor((maxH - 2 * PAD) / ROW_H))
     local shown = {}
     if level.parent then
@@ -205,11 +214,12 @@ function Render()
     for i = first, last do shown[#shown + 1] = children[i] end
     if more then shown[#shown + 1] = more end
     local widths, columns = {}, math.ceil(#shown / perColumn)
+    local columnW = (maxW - 2 * PAD - (columns - 1) * COLUMN_GAP) / math.max(1, columns)
     for i, e in ipairs(shown) do
         rows[i] = rows[i] or MakeRow()
         local w = ShowRow(rows[i], e)
         local c = math.ceil(i / perColumn)
-        widths[c] = math.max(widths[c] or 0, w)
+        widths[c] = math.min(columnW, math.max(widths[c] or 0, w))
     end
     for i = #shown + 1, #rows do rows[i]:Hide() end
     local x, tallest = PAD, 0
@@ -220,6 +230,7 @@ function Render()
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", x, -y)
             row:SetWidth(widths[c])
+            row.text:SetWidth(math.max(1, widths[c] - row.textInset))
             y = y + row:GetHeight()
         end
         tallest = math.max(tallest, y)
@@ -325,5 +336,6 @@ end
 
 function ns.MenuOpen()
     if list and list:IsShown() then return true end
+    if ns.GamepadStandDown() then return false end
     return Menu and Menu.GetManager and Menu.GetManager():IsAnyMenuOpen() or false
 end

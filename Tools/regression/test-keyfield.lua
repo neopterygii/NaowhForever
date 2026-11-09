@@ -12,16 +12,21 @@ local function Frame()
     local fr = { scripts = {} }
     function fr:SetScript(event, fn) self.scripts[event] = fn end
     function fr:SetText(text) self.text = text end
+    function fr:SetEnabled(on) self.enabled = on end
+    function fr:SetMotionScriptsWhileDisabled(on) self.motionWhileDisabled = on end
+    function fr:EnableKeyboard(on) self.keyboard = on end
     return setmetatable(fr, { __index = function() return function() end end })
 end
 
 -- The game's bindings: a key to its command, and the commands to their keys.
 local bound, printed, tooltips = {}, {}, {}
-local shift = false
+local shift, gamepad, saves = false, false, 0
 local env = setmetatable({
     UI = {},
     CreateFrame = Frame,
     ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
+        GamepadStandDown = function() return gamepad end,
+        GamepadWhy = function() return gamepad and "Gamepad owns bindings" or nil end,
         MEDIA = dofile("Tools/regression/core_media.lua"),
         Button = function() local b = Frame(); b.label = Frame(); return b end,
         Tooltip = function(_, title, text) tooltips[#tooltips + 1] = { title, text } end,
@@ -35,8 +40,8 @@ local env = setmetatable({
         for key, cmd in pairs(bound) do if cmd == command then return key end end
     end,
     GetBindingAction = function(key) return bound[key] or "" end,
-    SetBinding = function(key, command) bound[key] = command end,
-    SaveBindings = function() end,
+    SetBinding = function(key, command) assert(not gamepad, "no binding writes under Gamepad style"); bound[key] = command end,
+    SaveBindings = function() assert(not gamepad, "no saving bindings under Gamepad style"); saves = saves + 1 end,
     GetCurrentBindingSet = function() return 1 end,
     GetBindingText = function(key) return key end,
     GetBindingName = function(command) return command end,
@@ -95,5 +100,17 @@ field3.scripts.OnClick(field3, "LeftButton")
 field3.scripts.OnClick(field3, "MiddleButton")
 check("the middle button binds BUTTON3", bound.BUTTON3 == "CLICK Mouse:LeftButton"
     and bound["SHIFT-BUTTON5"] == nil)
+
+gamepad = true
+local before = saves
+local padField = KeyField({}, "CLICK Gamepad:LeftButton", "Gamepad")
+check("a key field is disabled under Gamepad style", padField.enabled == false and padField.motionWhileDisabled == true)
+padField.scripts.OnClick(padField, "LeftButton")
+check("a disabled field cannot capture keys", padField.keyboard == false)
+padField.scripts.OnClick(padField, "RightButton")
+padField.scripts.OnKeyDown(padField, "P")
+check("direct callbacks cannot set, clear or save bindings under the style", bound.P == nil and saves == before)
+check("the field explains the Gamepad restriction", tooltips[#tooltips][2] == "Gamepad owns bindings")
+gamepad = false
 
 print(("test-keyfield: %d checks passed"):format(checks))

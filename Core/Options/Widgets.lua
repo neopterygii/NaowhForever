@@ -1062,7 +1062,7 @@ local function SaveKeyBindings()
 end
 
 local function ClearBinding(action)
-    if InCombatLockdown() then return end
+    if InCombatLockdown() or ns.GamepadStandDown() then return end
     for _, key in ipairs({ GetBindingKey(action) }) do SetBinding(key) end
 end
 
@@ -1072,7 +1072,7 @@ local function Resolve(value)
 end
 
 local function Bind(combo, action, label)
-    if InCombatLockdown() then return end
+    if InCombatLockdown() or ns.GamepadStandDown() then return end
     local previous = GetBindingAction(combo)
     ClearBinding(action)
     SetBinding(combo, action)
@@ -1089,11 +1089,14 @@ function UI.KeyField(rgn, action, label, tooltip)
     btn:SetPoint("RIGHT", rgn, "RIGHT", -ROW_INSET, 0)
     if rgn._label then rgn._label:SetPoint("RIGHT", btn, "LEFT", -LABEL_GAP, 0) end
     btn:RegisterForClicks("AnyUp")
+    btn:SetMotionScriptsWhileDisabled(true)
     local capturing
     local function Show()
         local key = GetBindingKey(Resolve(action))
         btn.label:SetText(capturing and ns.L(TEXT_PRESS_KEY) or key and GetBindingText(key) or ns.L(TEXT_NOT_BOUND))
-        btn:SetAlpha(InCombatLockdown() and COMBAT_DIM or 1)
+        local held = ns.GamepadStandDown()
+        btn:SetEnabled(not held)
+        btn:SetAlpha((InCombatLockdown() or held) and COMBAT_DIM or 1)
     end
     local function Stop()
         capturing = false
@@ -1101,7 +1104,7 @@ function UI.KeyField(rgn, action, label, tooltip)
         Show()
     end
     btn:SetScript("OnClick", function(_, button)
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or ns.GamepadStandDown() then return end
         if MOUSE_KEYS[button] then
             if capturing then
                 Bind(KeyCombo(MOUSE_KEYS[button]), Resolve(action), Resolve(label))
@@ -1122,13 +1125,13 @@ function UI.KeyField(rgn, action, label, tooltip)
     end)
     btn:SetScript("OnKeyDown", function(_, key)
         if MODIFIER_KEYS[key] then return end
-        if key ~= "ESCAPE" and not InCombatLockdown() then Bind(KeyCombo(key), Resolve(action), Resolve(label)) end
+        if key ~= "ESCAPE" and not InCombatLockdown() and not ns.GamepadStandDown() then Bind(KeyCombo(key), Resolve(action), Resolve(label)) end
         Stop()
     end)
     btn:EnableKeyboard(false)
     btn:SetScript("OnShow", Show)
     btn:SetScript("OnHide", function() if capturing then Stop() end end)
-    ns.Tooltip(btn, type(label) == "string" and label or TEXT_KEY_BINDING, tooltip or TEXT_KEY_HELP)
+    ns.Tooltip(btn, type(label) == "string" and label or TEXT_KEY_BINDING, ns.GamepadWhy() or tooltip or TEXT_KEY_HELP)
     btn._refreshValue = function()
         if capturing then Stop() else Show() end
     end

@@ -453,6 +453,7 @@ end
 
 local function Choice(key)
     return function()
+        if key == "keys" and ns.GamepadStandDown() then return end
         opts[key] = not opts[key]
         Repreview()
     end
@@ -565,7 +566,11 @@ local function DrawBring(v, set)
     local rows = v.bring.rows
     PaintChoice(rows[1], TEXT.ACTIONS, opts.actions, Size(set.slots))
     PaintChoice(rows[2], TEXT.MACROS, opts.macros, set.macros and #set.macros or TEXT.NONE_KEPT)
-    PaintChoice(rows[3], TEXT.KEYBINDS, opts.keys, set.bindings and Size(set.bindings) or TEXT.NONE_KEPT)
+    local held = ns.GamepadStandDown()
+    PaintChoice(rows[3], TEXT.KEYBINDS, opts.keys, set.bindings and Size(set.bindings) or TEXT.NONE_KEPT, held)
+    rows[3]:EnableMouse(not held)
+    rows[3].box:EnableMouse(not held)
+    if held then ns.Tooltip(rows[3], TEXT.KEYBINDS, ns.GamepadWhy()) end
     local always = set.choices and set.choices.website
     PaintChoice(rows[4], always and TEXT.FILL_ALWAYS or TEXT.FILL, always or S.Get("fillLater"), "", always)
     rows[4]:EnableMouse(not always)

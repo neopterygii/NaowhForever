@@ -67,7 +67,7 @@ local function World(known)
         return f
     end
     local WHITE = { r = 1, g = 1, b = 1 }
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
+    local ns = { GamepadStandDown = function() return w.gamepad == true end, L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
         THEME = { fg = WHITE, muted = WHITE },
         Solid = function() return Fake("solid") end,
         AccentBorder = function(f) return f end,
@@ -164,6 +164,7 @@ local function World(known)
             end
         end,
         SetBinding = function(key, command)
+            assert(not w.gamepad, "no imported binding writes under Gamepad style")
             if command == "NO_SUCH_ADDON" then return false end
             for _, b in ipairs(w.binds) do
                 if b[2] == key then b[2] = b[3]; b[3] = nil end
@@ -181,7 +182,7 @@ local function World(known)
         end,
         C_KeyBindings = { GetBindingContextForAction = function() return 1 end },
         GetCurrentBindingSet = function() return 2 end,
-        SaveBindings = function(set) w.savedBindings = set end,
+        SaveBindings = function(set) assert(not w.gamepad, "no binding saves under Gamepad style"); w.savedBindings = set end,
         InCombatLockdown = function() return w.combat end,
         UnitClass = function() return "Priest", "PRIEST" end,
         UnitName = function() return w.name or "Preview" end,
@@ -214,6 +215,7 @@ local function World(known)
     for _, path in ipairs(FILES) do
         local chunk = assert(loadfile(path)); setfenv(chunk, env); chunk()
     end
+    w.env = env
     w.run = ns.ActionBarsCommand
     -- Changes the bars, lets the logout copy's timer run, then logs out.
     function w.logout(changed)
@@ -641,6 +643,22 @@ Case("a whole bar left out is never touched", function()
     w.bars = { [61] = Spell(598), [70] = { kind = "item", id = 6948 } }
     w.run("import NoBar2")
     assert(Bars(w) == "1=spell598 61=spell598 70=item6948", Bars(w))
+end)
+Case("Gamepad imports and exact restores leave bindings alone even with explicit options", function()
+    local w = World({ 598 })
+    w.gamepad = true
+    local A = w.ns.ActionBars
+    local set = { slots = { [1] = Spell(598) }, bindings = { F = "ACTIONBUTTON1" }, choices = { website = true } }
+    w.binds = { { "ACTIONBUTTON2", "F" }, { "ACTIONBUTTON3", "G" } }
+    local saved = w.savedBindings
+    local options = A.Import.Options()
+    assert(not options.keys, "the preview defaults to keeping current bindings")
+    local result = A.Import.Run(set, false, { actions = true, macros = false, keys = true, exact = true })
+    assert(result.placed == 1 and w.bars[1].id == 598, "action slots still import")
+    assert(result.bound == 0 and w.savedBindings == saved, "no binding save or reported binding import")
+    assert(w.binds[1][1] == "ACTIONBUTTON2" and w.binds[1][2] == "F"
+        and w.binds[2][1] == "ACTIONBUTTON3" and w.binds[2][2] == "G",
+        "website replacement and exact restore cannot change or clear keys")
 end)
 Case("keybinds switched off are not saved", function()
     local w = World({})

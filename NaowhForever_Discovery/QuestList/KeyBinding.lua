@@ -19,7 +19,7 @@ local function FirstTime()
 end
 
 local function DefaultKey()
-    if not S.Get("enabled") or InCombatLockdown() then return end
+    if not S.Get("enabled") or InCombatLockdown() or ns.GamepadStandDown() then return end
     if not FirstTime() or GetBindingKey(ACTION) then return end
     local taken = GetBindingAction(DEFAULT_KEY)
     if taken ~= "" then

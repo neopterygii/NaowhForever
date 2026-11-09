@@ -143,6 +143,10 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 
 ## Why
 
+- The first-login Shift-L assignment stands down under the Gamepad interface style before
+  touching the once-per-character marker. A later keyboard/mouse login can still assign it
+  if neither Shift-L nor the Quest List is already bound.
+
 - The zone you stand in and the quest givers and rares on a map are read through `Places.SameMap`,
   so Zephras Isle's second map (2665) finds 2521's quests and rares (Shared/README.md, Why).
 - Nothing runs until one of its tabs is open: it reads what you have done when it draws, and listens

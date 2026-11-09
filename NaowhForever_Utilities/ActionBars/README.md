@@ -62,6 +62,11 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 
 ## Why
 
+- Under the Gamepad interface style, importing bindings stands down inside `ImportBindings`,
+  including website replacement, exact backup restore, automatic imports and explicit options
+  passed by a caller. The import preview and setting hold keybinds off with the existing
+  Gamepad reason; action and macro imports still run. Saved preferences are not rewritten.
+
 - `KEYBOARD_SLOTS` is 180: the keyboard's slots, 15 pages of `SLOTS_PER_BAR` (12). The gamepad's
   slots come after them, read for as long as the client says the next one is valid.
 - In `Data/Bars.lua` the main bar's second page and the stance bars answer to the main bar's keys

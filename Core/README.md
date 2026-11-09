@@ -101,6 +101,10 @@ At 1, `Badges.lua` adds Naowh's Patreon to the link icons (`ns.LINKS`), after th
 
 ## Why
 
+- Key fields are read-only under the Gamepad interface style: both capture callbacks and the
+  binding helpers stand down, so a mouse click or a direct callback cannot set, clear or save
+  the game's bindings. The field is dimmed with the existing Gamepad reason.
+
 The QoL store and the Alerts group
 - The QoL store is in the core, not in the optional QoL addon: its defaults hold the preset, the BiS,
   Gear Sets, Blessings and Group Inspect switches, the character and inspect panels, the badges

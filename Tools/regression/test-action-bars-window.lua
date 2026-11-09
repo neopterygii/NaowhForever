@@ -52,6 +52,7 @@ local METHODS = {
         return true
     end,
     SetAlpha = function(f, alpha) f.alpha = alpha end,
+    EnableMouse = function(f, on) f.mouse = on end,
     SetDesaturated = function(f, on) f.desaturated = on end,
     GetFrameLevel = function() return 1 end,
     GetEffectiveScale = function() return 1 end,
@@ -90,7 +91,9 @@ end
 local rowParents = setmetatable({}, { __mode = "k" })
 local ns
 ns = {
-    GamepadStandDown = function() return false end,
+    GamepadStandDown = function() return state.gamepad == true end,
+    GamepadWhy = function() return state.gamepad and "Gamepad owns bindings" or nil end,
+    Tooltip = function(frame, _, body) frame.tooltipBody = body end,
     THEME = setmetatable({}, { __index = function() return WHITE end }),
     UI = {
         ModuleSettings = function(_, defaults) return Values(defaults) end,
@@ -814,6 +817,20 @@ local tile = With("number", "label")[1]
 local view = tile:GetParent()
 view.scripts.OnSizeChanged(view, 1100)
 check("its five tiles and three panels share the tab's width", tile.w == 212 and With("note", "rows")[1].w == 360)
+
+state.gamepad = true
+ns.OpenActionBarsImport("Hunter")
+local heldKeys = Bring("Keybinds")
+check("Gamepad preview holds keybinds off on both the row and its box", heldKeys.mouse == false
+    and heldKeys.box.mouse == false and not heldKeys.box.tick:IsShown()
+    and heldKeys.tooltipBody == "Gamepad owns bindings")
+Click(heldKeys)
+Click(heldKeys.box)
+check("even direct clicks cannot re-enable importing keys under the style", not heldKeys.box.tick:IsShown())
+state.gamepad = false
+ns.OpenActionBarsImport("Hunter")
+check("keyboard/mouse still offers keybind import", Bring("Keybinds").mouse == true
+    and Bring("Keybinds").box.mouse == true and Bring("Keybinds").box.tick:IsShown())
 
 state.class, state.className = "MAGE", "Mage"
 state.bars = {}

@@ -70,6 +70,7 @@ local function Unbind(...)
 end
 
 local function ImportBindings(set, test, exact)
+    if ns.GamepadStandDown() then return 0 end
     local count, cleared = 0, {}
     if not test and exact then
         for key in pairs(Capture.CaptureBindings()) do
@@ -142,7 +143,7 @@ local function Restore(result, slot, entry, test, ranks, index, fresh, exact)
 end
 
 local function Options()
-    return { actions = true, macros = S.Get("importMacros"), keys = S.Get("importBindings") }
+    return { actions = true, macros = S.Get("importMacros"), keys = not ns.GamepadStandDown() and S.Get("importBindings") }
 end
 
 local function Run(set, test, opts)

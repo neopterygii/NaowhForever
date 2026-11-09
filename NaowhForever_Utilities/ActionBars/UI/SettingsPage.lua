@@ -19,6 +19,14 @@ local TEXT_AT_LEVEL = ns.L("at level %d")
 
 local On = A.On
 
+local function BindingOn()
+    return On() and ns.GamepadFree()
+end
+
+local function BindingWhy()
+    return ns.GamepadWhy() or BARS_OFF
+end
+
 local function PushStopped()
     return C_CVar.GetCVar(AUTO_PUSH) == PUSH_OFF
 end
@@ -56,7 +64,7 @@ end
 local function ImportingSummary(store)
     local parts = { store.Get("highestRank") and TEXT_HIGHEST or TEXT_SAVED }
     if store.Get("importMacros") then parts[#parts + 1] = TEXT_MACROS end
-    if store.Get("importBindings") then parts[#parts + 1] = TEXT_KEYBINDS end
+    if not ns.GamepadStandDown() and store.Get("importBindings") then parts[#parts + 1] = TEXT_KEYBINDS end
     if store.Get("fillLater") then parts[#parts + 1] = TEXT_FILLS end
     if store.Get("saveOnLogout") then parts[#parts + 1] = TEXT_SAVES end
     return table.concat(parts, ", ")
@@ -79,7 +87,7 @@ page:Card({
         { key = "importMacros", label = "Import Macros", toggle = true, needs = On, why = BARS_OFF,
           help = "Makes the set's macros that this character does not have. A macro you already have, by name "
               .. "and text or by text alone, is used as it is: never copied twice or changed." },
-        { key = "importBindings", label = "Import Keybinds", toggle = true, needs = On, why = BARS_OFF,
+        { key = "importBindings", label = "Import Keybinds", toggle = true, needs = BindingOn, why = BindingWhy,
           help = "Binds every key the set has bound. Keys the set leaves free keep what they do here." },
         { key = "fillLater", label = "Fill In As You Learn", toggle = true, needs = On, why = BARS_OFF,
           help = "A spell an import could not place because you do not know it yet goes into its saved slot "

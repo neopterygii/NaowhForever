@@ -335,9 +335,9 @@ function NaowhForeverZoneLinkPinMixin:OnClick(button)
     if InCombatLockdown() then return end
     local link = self.link
     if button == "RightButton" and link.rightUiMapID then
-        C_Map.OpenWorldMap(link.rightUiMapID)
+        ns.Shared.Places.ShowMap(link.rightUiMapID)
     elseif button == "LeftButton" then
-        C_Map.OpenWorldMap(link.linkedUiMapID)
+        ns.Shared.Places.ShowMap(link.linkedUiMapID)
     end
 end
 

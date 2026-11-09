@@ -268,6 +268,10 @@ ns.Shared.ScalePin = function() end
 ns.Shared.PinClicks = function() end
 ns.Shared.Settings.Group = function() end
 dofile("NaowhForever_QoL/Interface/TownTravel.lua")
+ns.GamepadOwnsPanels = function() return false end
+for _, path in ipairs({ "Shared/Data/SameMaps.lua", "Shared/Game/Places.lua" }) do
+    local places = assert(loadstring(Read(path))); setfenv(places, env); places()
+end
 local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/TownMap.lua")))
 setfenv(chunk, env)
 chunk()

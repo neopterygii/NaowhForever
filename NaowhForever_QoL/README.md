@@ -166,6 +166,10 @@ NaowhForever_QoL/
 
 ## Why
 
+- Town-map zone exits and dock links open maps through `Shared.Places.ShowMap`, including a
+  dock's alternate right-click destination. It leaves the game's panels alone under Gamepad
+  UI or cursor auto-control and prints the existing reason, as other map links already do.
+
 - Under Forever's Gamepad interface style (`ns.GamepadStandDown()`) the features that hook, move or
   add to the game's own windows stay off and their settings say why: Zone Info and the Town Pins
   button on the world map, the Map Window, Type DELETE For You, Auto-Accept Layer Swap, Saved Quest

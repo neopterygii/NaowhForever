@@ -7,14 +7,17 @@ local R = P.Recipes
 local V = P.Vendors
 
 local AH_CUT = 0.05
-local FROM_VENDOR, FROM_AH = "vendor", "ah"
+local FROM_VENDOR, FROM_AH, FROM_MADE = "vendor", "ah", "made"
 local DEFAULT_ROI_GREY_BELOW, DEFAULT_ROI_GREEN_FROM = 10, 30
 local PERCENT = 100
 local SELL_PRICE = 11
+local LISTED_ENOUGH = 10
 local TEXT_ROI = ns.L("(%.0f%% ROI)")
 
 local EMPTY = {}
-local profitCache, netCache = {}, {}
+local profitCache, netCache, bestNetCache = {}, {}, {}
+local bestSkill
+local plan = { cost = {}, make = {}, craft = {}, busy = {} }
 
 local function AuctionPrice(itemID)
     return ns.AuctionPrice and ns.AuctionPrice(itemID)
@@ -25,6 +28,20 @@ local function BuyPrice(itemID)
     local ah = AuctionPrice(itemID)
     if vendor and (not ah or vendor <= ah) then return vendor, FROM_VENDOR end
     if ah then return ah, FROM_AH end
+end
+
+local function MakePlan()
+    if not P.Shopping.MakeOwn() then return end
+    plan.owned = R.Owned()
+    return plan
+end
+
+local function ReagentPrice(itemID, makes)
+    if makes then
+        local each, made = P.Shopping.Cheapest(itemID, makes, 0)
+        if made then return each, FROM_MADE end
+    end
+    return BuyPrice(itemID)
 end
 
 local function ProfitShown()
@@ -42,12 +59,37 @@ local function SellValue(output, made)
     R.ItemName(output)
 end
 
+local function AuctionValue(output, made)
+    local each = AuctionPrice(output)
+    local listed = ns.AuctionListed and ns.AuctionListed(output)
+    if each and listed and listed >= LISTED_ENOUGH then return AfterCut(each, made) end
+end
+
+local function DisenchantValue(output, made, enchanting)
+    local values = P.DisenchantValues
+    local prices = ns.AuctionPriceList and ns.AuctionPriceList()
+    if not prices then return end
+    local _, _, quality, baseLevel, _, _, _, _, equip, _, _, classID = C_Item.GetItemInfo(output)
+    if not (quality and values.ItemTakes(output, classID, quality, equip)) then return end
+    local level = C_Item.GetDetailedItemLevelInfo(output) or baseLevel
+    local required = values.RequiredSkill(level, quality)
+    if not (required and enchanting >= required) then return end
+    local gross = values.Expected(classID, quality, level, prices)
+    return gross and values.AfterCut(gross) * made
+end
+
+local function BestValue(output, made, enchanting)
+    local vendor = SellValue(output, made)
+    if not (output and vendor) then return vendor end
+    return math.max(vendor, AuctionValue(output, made) or 0, DisenchantValue(output, made, enchanting) or 0)
+end
+
 local function CraftValue(recipeID, output, made, v)
     v.cost, v.missing, v.owned, v.output, v.made = 0, 0, 0, output, made or 1
     local ok, reagents = pcall(R.Reagents, recipeID)
-    local owned, n = R.Owned(), 0
+    local owned, makes, n = R.Owned(), MakePlan(), 0
     for _, r in ipairs(ok and reagents or EMPTY) do
-        local each, from = BuyPrice(r.itemID)
+        local each, from = ReagentPrice(r.itemID, makes)
         local have = owned[r.itemID] == true
         n = n + 1
         local p = v.parts[n] or {}
@@ -70,10 +112,10 @@ local function CraftValue(recipeID, output, made, v)
 end
 
 local function ReagentCost(reagents)
-    local owned, cost, missing = R.Owned(), 0, 0
+    local owned, makes, cost, missing = R.Owned(), MakePlan(), 0, 0
     for _, r in ipairs(reagents) do
         if owned[r.itemID] ~= true then
-            local price = BuyPrice(r.itemID)
+            local price = ReagentPrice(r.itemID, makes)
             if price then
                 cost = cost + price * r.need
             else
@@ -100,18 +142,28 @@ local function RecipeProfit(recipeID, output, made)
     return profit or nil
 end
 
-local function NetCost(recipeID)
-    local net = netCache[recipeID]
+local function NetCost(recipeID, enchanting)
+    if enchanting and enchanting ~= bestSkill then
+        wipe(bestNetCache)
+        bestSkill = enchanting
+    end
+    local cache = enchanting and bestNetCache or netCache
+    local net = cache[recipeID]
     if net == nil then
         net = false
         local ok, reagents = pcall(R.Reagents, recipeID)
         if ok and #reagents > 0 then
             local cost, missing = ReagentCost(reagents)
             local output, made = R.OutputItem(recipeID)
-            local sell = SellValue(output, made or 1)
+            local sell
+            if enchanting then
+                sell = BestValue(output, made or 1, enchanting)
+            else
+                sell = SellValue(output, made or 1)
+            end
             if missing == 0 and sell then net = cost - sell end
         end
-        netCache[recipeID] = net
+        cache[recipeID] = net
     end
     return net or nil
 end
@@ -144,10 +196,14 @@ end
 local function ClearCache()
     wipe(profitCache)
     wipe(netCache)
+    wipe(bestNetCache)
+    wipe(plan.cost); wipe(plan.make); wipe(plan.craft); wipe(plan.busy)
 end
 
 P.Prices = {
     FROM_VENDOR = FROM_VENDOR,
+    FROM_MADE = FROM_MADE,
+    LISTED_ENOUGH = LISTED_ENOUGH,
     AfterCut = AfterCut,
     BuyPrice = BuyPrice,
     ProfitShown = ProfitShown,

@@ -59,6 +59,7 @@ local TEXT_NO_PRICE = ns.L("no price")
 local TEXT_ABOUT = "~"
 local TEXT_PARTS_BOUGHT = ns.L("parts bought")
 local TEXT_SAVES = ns.L("saves ~")
+local TEXT_COSTS_MORE = ns.L("costs ~%s more")
 local TEXT_NO_AH_PRICE = ns.L("no AH price")
 local TEXT_UNPRICED = ns.L("unpriced")
 local TEXT_VENDOR_PRICE_UNKNOWN = ns.L("price unknown")
@@ -352,6 +353,8 @@ local function FillMade(row, e, plan)
     row.name:SetText(TEXT_ROW:format(e.qty, Shopping.ItemName(e.item) or (TEXT_ITEM .. e.item)))
     if not planned then
         row.note:SetText(TEXT_PARTS_BOUGHT)
+    elseif saves and saves < 0 then
+        row.note:SetText(TEXT_COSTS_MORE:format(Text.Short(-saves)))
     else
         row.note:SetText(saves and (TEXT_SAVES .. Text.Short(saves)) or TEXT_NO_AH_PRICE)
     end
@@ -460,6 +463,7 @@ local function Dock()
     window:ClearAllPoints()
     window:SetPoint("TOPLEFT", profession, "TOPRIGHT", DOCK_GAP, 0)
     window:SetPoint("BOTTOMLEFT", profession, "BOTTOMRIGHT", DOCK_GAP, 0)
+    window:SetClampedToScreen(false)
     window:SetFrameStrata(profession:GetFrameStrata())
     grip:Hide()
     RefreshDetach()
@@ -475,6 +479,7 @@ local function Float(left, top, height)
         Parts.Place(window, window.positionKey)
     end
     window:SetHeight(height)
+    window:SetClampedToScreen(true)
     window:SetFrameStrata(FLOAT_STRATA)
     grip:Show()
     RefreshDetach()
@@ -482,7 +487,10 @@ end
 
 local function OnDetach()
     if not docked then
-        if ProfessionOpen() then Dock() end
+        if ProfessionOpen() then
+            Dock()
+            ns.ProfWindowFit()
+        end
         return
     end
     Remember(false)
@@ -627,6 +635,11 @@ function ns.OpenShoppingList()
     window:Show()
     window.backdrop:Paint(1)
     RefreshDetach()
+    if docked then ns.ProfWindowFit() end
+end
+
+function ns.DockedShoppingList()
+    if window and docked and window:IsShown() then return window end
 end
 
 function ns.ShoppingListDockTo(frame)
@@ -649,4 +662,5 @@ Shopping.RenderWindow = RenderWindow
 
 S.OnChange(function(key)
     if key == "shoppingListDock" then ns.ConfirmReload(TEXT_DOCK_RELOAD) end
+    if key == "makeReagents" then Shopping.Redraw() end
 end)

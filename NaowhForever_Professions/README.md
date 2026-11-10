@@ -3,10 +3,10 @@
 Naowh's profession window in place of the game's: your recipes by category with the ones you
 have not learned below them, the chosen recipe in the middle (reagents, profit, craft buttons, or
 where to learn it), Blizzard's own profession tabs on its edge, and an overview card for each
-profession. Around it: craft orders from another player's link, buying reagents on the auction
-house or at a merchant, a shopping list, your favourite recipes at the trainer and the auction
-house, a next-rank alert, a batch craft timer, a tracking reminder and your enchants beside the
-trade window. Laid out like the
+profession. Around it: craft orders from another player's link, your alts' professions, buying
+reagents on the auction house or at a merchant, a shopping list, your favourite recipes at the
+trainer and the auction house, a next-rank alert, a batch craft timer, a tracking reminder and your
+enchants beside the trade window. Laid out like the
 [Dungeon Journal](../NaowhForever_DungeonJournal/README.md), on [`Shared/`](../Shared/README.md).
 
 ## Layout
@@ -38,6 +38,7 @@ NaowhForever_Professions/
     GatherNodes.lua    each herb and vein by its minimap name: kind, skill needed, item it yields (P.GatherNodes)
   Text.lua             money and colour codes as text (P.Text)
   LinkView.lua         another player's profession opened from a trade link, and when it ends (P.Links)
+  Alts.lua             Your Alts' Professions: each character's own trade links, and opening an alt's (P.Alts)
   Recipes.lua          the open profession, reagents, what a recipe makes, bag counts (P.Recipes, ns.ProfWindowAPI)
   Vendors.lua          vendor reagents, sellers, prices seen or built in, buying (P.Vendors)
   Prices.lua           buy prices, a craft's value, profit and return on investment (P.Prices)
@@ -89,6 +90,7 @@ NaowhForever_Professions/
     ShoppingList.lua   the shopping list beside the auction house: check and buy
     ReagentList.lua    the Reagents list the Reagents window and The Market share (P.ReagentList)
     ReagentsWindow.lua the Reagents window and its title bar button (ns.ToggleReagents)
+    Alts.lua           the Alts title bar button and its menu of your other characters' professions
     CraftQueue.lua     the standalone Crafting Queue window (ns.ToggleCraftQueue)
     TrainFavorites.lua Train Favorites beside the trainer
     FavoriteMarks.lua  stars beside favorite unlearned recipes at trainers and merchants
@@ -179,6 +181,23 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   the plan and a loss on the recipe, with nothing saying why. A recipe with an unpriced reagent, or
   a result whose sell price has not loaded yet, comes after the priced ones, by chance. The cost is cached
   per recipe with the profit, until the next full draw. The unlearned groups keep their own order.
+- Plan by Best Sale Price (off by default) changes only the Skill-up Plan's cost: the result counts at the
+  best of its vendor sale, its auction price after the cut and its disenchant value after the cut. Best for
+  Skill-ups and the per skill-up line keep the vendor sale, so a setting found under the plan does not
+  move the recipe list. The plan reads it once per plan and keeps it in the plan's cache key, and
+  `Prices.NetCost` keeps a second cache for it, so turning it on or off plans again at once.
+- The auction price counts only when at least `LISTED_ENOUGH` (10) auctions listed the item in the same
+  scan or release (`ns.AuctionListed`), a stack counting once: one seller's stack at a silly price would
+  otherwise pick every step, and the plan crafts dozens of each. A price with no count, from a scan or
+  release made before counts were kept, counts as too few.
+- The disenchant value is the same estimate as Disenchant Deals' (`DisenchantValues.Expected` on the
+  last prices, at the item's own level from `GetDetailedItemLevelInfo`), and counts only when the
+  character's Enchanting meets the item's requirement, as The Market's Best Way to Sell does. The plan
+  reads the Enchanting skill once per plan and keeps it in its cache key, and `Prices.NetCost` drops its
+  best-sale cache when the skill it was worked out at changes, so learning Enchanting plans again.
+- The disenchant value prices the enchanting materials from the last prices without a count check, so
+  a thin market for a shard or essence can still lift it. Checking those counts would need a counted
+  price list through `DisenchantValues.Expected`; not done yet.
 - Skill-up Plan is off by default; its title bar button and its pane are made the first time they are
   needed, and its only hook is `Window.Render`, which places the button (as Disenchant does). Opening it
   shows the plan in the middle column in place of the recipe; clicking a recipe in the list, or a step,
@@ -230,8 +249,18 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   icon's mask is turned half a turn instead: a MaskTexture with flipped tex coords hides the icon,
   and the side tab mask is the same top and bottom, so turning it mirrors it. Clicking a tab
   re-anchors every icon to its right-side spot, so a SetPoint hook mirrors it again.
-- With the tabs on the left, the window moves right just enough to keep them on screen: the game opens
-  it at the screen's left edge.
+- What hangs off the window is kept on screen: the profession tabs, on either edge, and the docked
+  Shopping List. On opening, when it widens, on letting go of a drag and when the Shopping List docks,
+  the window (and Blizzard's under it) moves just enough to bring them back, the left edge first when
+  they cannot all fit. Otherwise it may still be dragged mostly off screen, as our windows may
+  (`ns.AllowOffscreen`); a docked Shopping List is as tall as the window, so with it the whole window
+  stays on screen. The game opens it at the screen's left edge, where tabs on the left would be off.
+- It is fit only with the tabs docked on it, so not while it is still opening (a docked Shopping List
+  reopens in its OnShow, before it is moved to its place), and not while a move waits for combat to
+  end, which would save the spot it has not left yet; after combat it is moved, then fit. Less than
+  `FIT_SLACK` (a pixel) past an edge, left over from converting scales, does not count.
+- Docked, the Shopping List is not clamped to the screen, so it stays beside the window and is measured
+  where it is: clamped, the screen held it back over the window.
 - Dock Shopping List (`shoppingListDock`) is off by default. Off, the Shopping List is a window of its
   own and the tabs stay on the right edge. It is read once,
   when the profession window and the Shopping List are first built, so changing it asks for a reload.
@@ -268,9 +297,12 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   is not showing.
 - Blizzard only makes a tab for a profession you have learned, so an unlearned one has none. The docked
   tabs on the right edge get a Naowh-blue outline so they stand out on the dark window; mirrored onto
-  the left edge they read as part of it and have none. The Unlearn button beside a skill
-  bar is drawn from the atlas `Profession-button-red-crossmark` at 20px and full strength; where that
-  atlas is missing it falls back to the red cross of `ReadyCheck-NotReady`, or the button shows nothing.
+  the left edge they read as part of it and have none. The outline is the tab's own hover art
+  (`common-sidetab-hover`, which Forever swaps for its `-c60` art as it does for Blizzard's tab) tinted
+  blue, so it follows the bevelled corners; a square border round the tab frame sat off the art, which
+  is taller than the frame and has empty space on its outer side. It is drawn under Blizzard's gold
+  selected art so the open tab still shows. The Unlearn button beside a skill bar is drawn from the
+  atlas `Profession-button-red-crossmark` at 20px and full strength; where that atlas is missing it falls back to the red cross of `ReadyCheck-NotReady`, or the button shows nothing.
 - With the overview docked our window holds secure buttons and is protected, so closing it in combat
   makes it transparent instead of hiding it. Resizing waits for combat to end for the same reason.
   It cannot be dragged in combat either, and a drag still going when combat starts ends there:
@@ -287,6 +319,34 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   ends when the window closes, but not on the close the click itself causes (`SETTLE`, 1s), or when
   you cast one of your own professions. Mining's window opens with Smelting (2656), not a spell
   named after the profession.
+- Your Alts' Professions is off by default. On, a character opening its own profession (not a linked,
+  guild or NPC list, and only while `CanTradeSkillListLink` allows it) saves that profession's
+  `GetTradeSkillListLink` account-wide in `profLinks`, by GUID, with its name, class, realm and faction.
+  Neither call is in the generated API docs; Blizzard's own Forever profession window calls both for its
+  Link button. Every list update while its own window is open saves the link again when it changed: the
+  link carries the skill and the recipes known, so a skill-up or a recipe learned with the window open
+  is kept. A character shows in the menu only once it has opened a profession with this on, and a
+  profession it dropped goes the next time it saves one. Only characters on the same realm and faction
+  are listed, as QoL's alt roster keeps them, since a list is not expected to open across factions.
+- The name saved is the one QoL's alt roster uses (`GetUnitName` without the realm, with a surname), so
+  QoL's Forget a character also drops that character's links through `ns.ForgetAltProfessions`. A
+  deleted or transferred character otherwise stays in the menu until it is forgotten there.
+- Opening an alt's profession calls `SetItemRef` with its saved link, as a chat click does. Blizzard's
+  Lua has no handler for `trade:` links: `SetItemRef` hands the link to `ItemRefTooltip`, the client
+  asks the server for the list, and `ProfessionsFrame` opens from its own `TRADE_SKILL_SHOW` handler.
+  So the click runs Blizzard's code only for the ItemRef tooltip (no UI panel, so no
+  `FramePositionDelegate`), never for the profession window or for crafting, which a linked list
+  cannot do anyway. LinkView's retry already calls `SetItemRef` the same way.
+- Whether an offline character's link opens on Forever is not known yet. If no linked list opens
+  within `OPEN_WAIT` (5s), a chat line says so and the link view LinkView started ends, so the window
+  comes back for your own open profession; it is not tried again beyond LinkView's own retry. Picking
+  the alt that is already open fires no event, so a linked list showing for that GUID ends the wait
+  quietly. A modified click does nothing: `SetItemRef` would hand it to `HandleModifiedItemClick`.
+- An alt's link shows in the window as a linked view (`W.linked`), like Craft Orders', but without the
+  order column (`W.orders` false), whether Craft Orders is on or not. Its recipes show their reagents
+  and Add to List, which puts them on this character's Shopping List, never the Crafting Queue (that
+  crafts here), and no profit line, as the recipe list shows none for a linked view. A stranger's link
+  is unchanged.
 - Forever answers `numAvailable` with 0, so how many you can make is worked out from the reagents.
 - The recipe schematic is the current API; the reagent-info calls are kept as a fallback. A recipe's
   reagents and output never change, so each is read once and shared read-only; only a schematic that
@@ -485,6 +545,12 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   shared cooldown can read 0 on the spell). What was bought counts at every level, and a craft taken
   off takes its purchases along. Every craft fires TRADE_SKILL_LIST_UPDATE, so the recipes known are
   recorded again only when they changed, 0.5s after the list settles.
+- Make Your Own Reagents (`makeReagents`) is off by default and needs the Shopping List, whose recorded
+  recipes (`profMakes`) it reads. On, a material you know the recipe for is made whenever its parts are
+  priced, even when buying it costs less, with the extra cost on its Make First row; Buy there still buys
+  it. Crafting Profit prices each reagent from the same plan, marked "(made)", in a plan of its own that
+  is cleared with the profit cache. A part that leads back to the item being made (one made from what it
+  makes) is bought at that step, so the plan never goes round in a loop.
 - Vendor Items on Shopping List is opt-in so the list stays as it was for everyone else: off, vendor
   reagents are left off the list as before. On, missing vendor items from recipes and manually added
   items stay in the Shopping List. They go to Buy from Vendor unless the last auction scan and a known
@@ -520,6 +586,9 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   is cast, so 3s stands in. Pressing Create mid-craft fails that press while the batch casts on, so
   that failure is ignored. A batch with no craft event 5s past its expected end has stopped. Its
   hooks are installed the first time it is switched on and stay, idle while it is off.
+- The Total Craft Timer's pips mark where each craft ends: a finished craft where it finished, the
+  rest where the timer expects them, so the fill meets a pip as the count goes up. Under 8px a craft
+  (more than 52 crafts) they run together, so a batch that long shows none.
 - Bag room is played out craft by craft on what the bags hold: the item onto a stack with room, else
   a free slot that can take it; the reagents out, smallest stack first (seen in game 2026-09-30), each
   emptied stack freeing its slot. A profession bag takes only its kind, the reagent bag only reagents.
@@ -647,6 +716,13 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   a recipe trained later is used only from its skill, left out when its training does not pay, and a
   next-rank recipe stays out) and `test-professions-memory.lua` (the Train at row, the steps the button
   takes and what the plan costs to work out).
+- Plan by Best Sale Price: `test-profession-skill-up-plan.lua` (turning it on or off plans again, and a
+  craft that sells well goes first, a new Enchanting skill plans again) and `test-profession-roi.lua` (the
+  auction sale only with enough auctions, disenchanting only with the Enchanting the item's own level
+  needs, the vendor-only cost unchanged). In game, with Skill-up Plan on, open a profession whose early
+  crafts sell on the auction house, scan, and turn Plan by Best Sale Price on: the plan's note names the
+  best sale, step costs drop for crafts with 10 or more auctions up, and a craft with one auction, even
+  a big stack, keeps its vendor cost.
 - The window's slices: `test-profession-combat-close.lua`, `test-profession-window-drag.lua`
   (Takeover.lua), `test-profession-link-view.lua` (LinkView.lua), `test-profession-shift-click.lua`
   (AuctionHouse.lua), `test-professions-ah-panels.lua` (the panels' edge, AuctionHouse.lua),
@@ -655,6 +731,10 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   `test-shopping-consumables.lua` (Consumables.lua),
   and the looks in `test-icon-look.lua` and
   `test-qol-bars-look.lua`.
+- Your Alts' Professions: `test-profession-alts.lua` (saving and listing the links, same realm and faction,
+  opening one, a modified click, a link that does not open ending the link view, an alt already open,
+  QoL's Forget a character, Recipes.lua's alt check) and `test-professions-memory.lua` (an alt's link drawn with Add to List, a stranger's with the
+  order column). In game, the first check is whether an alt's link opens while that alt is offline.
 - Vendor Shopping List routing and purchases: `test-profession-shopping-vendor.lua`.
 - Reagents: `test-profession-reagent-uses.lua` (ReagentUses.lua); its data is current:
   `Tools/tests/test_recipe_reagents.py`.

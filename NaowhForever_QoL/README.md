@@ -118,7 +118,8 @@ NaowhForever_QoL/
     Durability.lua      the low durability warning
     LootConfirm.lua     the retired loot confirmation skip, inert
     WaylaidCratesData.lua what each Waylaid Crate can be filled with (ns.WaylaidCrates), generated
-    AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary, ns.AuctionScan), from your scans or the release's prices, Waylaid Crate Prices
+    PriceShare.lua      Prices for Other Addons: Auctionator's price API (`Auctionator.API.v1`) answered from Auction Prices
+    AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionListed, ns.AuctionAge, ns.AuctionScanSummary, ns.AuctionScan), from your scans or the release's prices, Waylaid Crate Prices
     FoodBar.lua         the Food & Drink Bar (its food and potion lists are Shared/Game/Consumables.lua)
     BagSpace.lua        Bag Space (ns.BagSpaceRescan; ns.BagSpace for its ignore list)
     BagSpaceIgnore.lua  Bag Space's Ignore List window (ns.ShowBagSpaceIgnoreList)
@@ -476,6 +477,11 @@ NaowhForever_QoL/
   again. A price then comes from your scan or that house, whichever is newer. Until a house is
   found, a price is the middle of your faction's houses, which may be other realms', so a scan of
   your own always comes first and the middle only prices what it does not list.
+- A scan also keeps how many auctions listed each item with a buyout (`house.listed`), a stack
+  counting once, and the release's prices carry the same count; `ns.AuctionListed` and
+  `ns.AuctionPrice` share one lookup, so the count is always from where the price came from, and a thin
+  market can be told apart from a liquid one. A scan from before the counts
+  has none, and reads as unknown.
 - Scans are stamped with `GetServerTime()`, as the release's prices carry Blizzard's time
   (Last-Modified), so a PC clock that is off still puts the newer one first.
 - Capture Other Addons' Scans hooks `C_AuctionHouse.ReplicateItems` the first time it is on, so a
@@ -517,6 +523,33 @@ NaowhForever_QoL/
 - Auction House Price leaves its line off while The Market's tooltip carries the item's price itself (its
   Compact style, or Whole Stack on a stack), asked through `ns.Market.ShowsPrice` only when The Market is
   loaded, so the price shows once. A crate then keeps its bundles, under the prices' age.
+- Prices for Other Addons (`ahShare`) sets the global `Auctionator` to a table of its own whose `API.v1`
+  answers Auctionator's price calls: auction price, age and exactness by item ID and link, vendor and
+  disenchant price by item ID and link, and `RegisterForDBUpdate`. Nothing else of Auctionator's is there
+  (no searches, no shopping lists), so an addon that calls more than the prices errors in its own code.
+- It is set only while `Auctionator` is unset and Auctionator is not installed and enabled for this character
+  (`C_AddOns.IsAddOnLoadable` with the player's GUID, as Blizzard's `AddOnUtil` asks). Auctionator makes its
+  global anew in its first file, so even if it loads after us its own table replaces ours.
+- It is set when QoL loads, not at login, because some addons look for Auctionator as they load; one that
+  loads before QoL and looks only then never sees it. Turning it off clears the global only while it is ours,
+  and every call answers nothing while the global is not ours, so an addon that kept the `API.v1` table
+  agrees with one that looks again. With Auctionator installed the row is unavailable (`ns.PriceShareFree`):
+  turned on, it would change nothing. `PriceShare.lua` loads before `AuctionPrices.lua` so the row's card
+  can name that function.
+- Age is whole days since the price's scan or the release's prices, never below 0 (the release's time can
+  run a little ahead of the realm's clock), and nil past 21 days, as Auctionator's is. A price is per item
+  ID, so a link's price ignores a random suffix ("of the Bear"); for that reason a weapon or armour link is
+  never exact, while any other priced item is.
+- Other addons can ask for a price during their own load, before the player's faction is known, so
+  `House()` remembers its key only once the faction is there; until then it uses the realm-only key, as
+  before, without remembering it.
+- Vendor price is what a merchant sells the item for, one item, from Professions' learned and built-in
+  vendor prices (`ns.Professions.Vendors.Price`), as Auctionator's is; nil without Professions. Disenchant
+  price is Professions' expected disenchant value before the auction house cut (`DisenchantValues.Expected`).
+- `RegisterForDBUpdate` callbacks run when a scan finishes and its prices are saved (`ns.AuctionPricesChanged`,
+  from Auction Prices), and only while the global is ours. Each runs through `xpcall` with the game's error
+  handler, so another addon's broken callback is reported as its own and the rest still run. The release's prices loading is not an update: they load on the first
+  price asked for, inside that call.
 - The GCD Tracker reads only the player's own casts, and those are never secret.
 - Forever has no dedicated global cooldown spell, so the GCD Tracker watches one baseline spell
   per class with no cooldown of its own (`GCD_SPELLS`): any cooldown it shows is the global
@@ -1221,6 +1254,7 @@ NaowhForever_QoL/
 - Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `ZoneExits.lua`. `EXIT_SHRINK` (0.6) makes an exit arrow 40% smaller than a pin, so it stands no bigger than the others, and `EXIT_LENGTH` is its length in its own widths.
 - Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on, except stable masters, which only a hunter (`STABLE_CLASS`) sees; so do mailboxes and spirit healers, which are what you look for out in the world.
 - `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
+- On OpenMap's seamless map the town pins of the zones beside the map underneath show too (Shared/README.md, Why), but its zone exits only the map underneath's: on one seamless map the neighbours' exits only doubled the arrows at every border. A town pin keeps its own map, which its flight-master tooltip asks about.
 - Which town pins show is chosen on the map itself, from the Town Pins button (`MapPinsPanel.lua`), and only there: the long list of town pin types is what you pick while looking at the map. Everything else is on QoL's Map & Pins tab and only there: a Map Options card (id `mapOptions`) and a Map Pins card (id `townMap`: Town Pin Size, then each module's pins under its title). No setting is in both places but Town Pin Size. The Map Pins card's search words include every town pin's name, so the options search still leads there. The keys stay in the QoL store, so saved settings carry over. The button shows whenever QoL is on, since the drawer is also where a switch that is off is turned back on.
 - Map & Pins is the home of every map pin and map option: the town pins, QoL's own Unexplored Areas, Zone Levels, Fishing Levels and Skyborne Spots, Discovery's quests, rares, library books and Sleeping Bag steps, and the Dungeon Journal's entrances. Each of the last adds a section to `ns.Shared.MapPins` (`{ title, order, store, switch, rows, map }`), and `ns.Shared.MapPinSections()` hands them back by `order` (10 to 13 the map options, then the sections with no `order`, which count as 50, in load order, and Skyborne last at 60). A section's `title` is its group; one with no title continues the group above. Sections marked `map` (Unexplored Areas, Zone Levels, Fishing Levels) are the Map Options card's rows, the rest follow Town Pin Size on Map Pins under their titles. Rows of another module's store are `lent`, so a card's Reset and changed count leave them to their module. A module that is not loaded adds nothing, and a section whose `hidden` says so is left off (Skyborne Spots for anyone not Skyborne). Drawer rows dim and lock while their `needs` fails: the town rows while Town Pins is off. A town row with a `class` shows only for that class (Stable Masters, hunters). The drawer has its own Town Pins switch, so the town pins can be turned back on from the map.
 - The Town Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
@@ -1394,12 +1428,14 @@ NaowhForever_QoL/
 - The overlays (`MapOverlays.lua`, generated by `Tools/build/map_overlays.py` from the game's tables) are `[uiMapID] = { { width, height, offsetX, offsetY, fileDataID, ... } }`: an area's size and place on the map art in its pixels, then its `TILE` (256 px) tiles row by row (`AREA_FIELDS` before them).
 - A tile's drawn size and its texture file's size differ along one side: the last tile of a row or column holds what is left, in a file rounded up to a power of two (from `SMALLEST_FILE`).
 - The pin is one for the whole map, holding every unexplored area's tiles. Its `CheckMouseButtonPassthrough` is left empty: the map calls it on every acquired pin, its SetPassThroughButtons is protected in combat, and this pin takes no clicks.
+- On OpenMap's seamless map (`ns.Shared.OpenMap.On()`) nothing is drawn: OpenMap's art covers the map's exploration layer, where the pin sits, so its tiles could not show. OpenMap has its own choice for unexplored areas (shown as they are, its default, dimmed or hidden).
 
 ### Zone Levels and Fishing Levels
 - Forever's client tables give no outdoor zone a level range (no ContentTuningID on UiMap or AreaTable), so `C_Map.GetMapLevels` has nothing and the game's own map label never shows one. The ranges come from Wowhead's Forever world map instead, written to `ZoneLevelsData.lua` by `Tools/build/zone_levels.py`; Moonglade, Mount Hyjal and Shen'dralas have none there.
 - The range is our own text under the game's area label (its Description), so nothing is written into Blizzard's label. The colour follows the game's rule for a range: the low end's colour below it, the high end less `BELOW_RANGE` above it, yellow inside.
 - Fishing Levels is a second line of our own under the range (under the game's Description when the range is off or the zone has none), on its own switch, from the same hovered zone. A zone's pair in `FishingLevelsData.lua` is the lowest skill that fishes there and the skill no fish gets away from, 95 apart, the low end never under 1. Neither the client tables nor Wowhead's Forever pages carry it, so the numbers are entered by hand from Classic and cross-checked against warcraft.wiki.gg and Classic fishing guides; zones with no water to fish and Forever's own zones are left out.
 - The colour is against your Fishing skill with gear and lures: red under the low end, yellow until the high end, green from it, grey without Fishing. Your skill is `GetProfessions()`'s fourth slot (`FISHING_SLOT`), read when the hovered zone changes.
+- On OpenMap's seamless map (`ns.Shared.OpenMap.On()`) both stand down: OpenMap replaces the game's area label and adds the hovered zone's level range and Fishing skill to it itself (its zone levels option, on by default), so ours would show them twice. Zone Info's hover takes OpenMap's zone under the cursor instead (`ns.Shared.OpenMap.MapAtCursor()`), and the game's lookup where OpenMap has no zone there.
 
 ### Mana Efficiency
 - Its amounts come from `SpellEfficiencyData.lua`, generated by `Tools/build/spell_efficiency.py` from the game's own spell tables (wago.tools, the build in its header), keyed by spell ID. Nothing is read from tooltip text.

@@ -7,7 +7,7 @@ local Settings = ns.Shared.Settings
 local Group = Settings.Group
 
 local RECIPE_KEYS = { "recipeFinder", "rankAlert", "bagReagents", "bankReagents", "trainFavorites", "skillThresholds",
-    "skillUpChances", "skillUpPlan", "skillUpPlanLater", "learnedRecipeVendors" }
+    "skillUpChances", "skillUpPlan", "skillUpPlanLater", "skillUpPlanBest", "learnedRecipeVendors" }
 local GATHER_LIFT = 8
 local GATHER_STAGE_H = 130
 local CRAFT_STAGE_H = 100
@@ -18,7 +18,7 @@ local ORDER_DISENCHANT, ORDER_TRADE_ENCHANTS, ORDER_DISENCHANT_DEALS = 60, 65, 7
 local ORDER_NODE_ICONS, ORDER_NODE_TOAST = 55, 56
 local SAMPLE_ICON = "Interface\\Icons\\INV_Ingot_02"
 local SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT = ns.L("Smelt Copper"), 4, 10
-local SAMPLE_SHARE, SAMPLE_LEFT = 0.4, 15
+local SAMPLE_SHARE, SAMPLE_LEFT = 0.45, 15
 local TEXT_OFF = ns.L("Turn on Professions")
 local TEXT_SAMPLE_TRACK = ns.L("Track Herbs / Minerals")
 local TEXT_NONE = ns.L("No professions learned yet")
@@ -58,6 +58,10 @@ end
 
 local function PlanOn()
     return FinderOn() and S.Get("skillUpPlan") == true
+end
+
+local function PlanValueOn()
+    return On() and S.Get("skillUpPlan") == true
 end
 
 local function ProfitOn()
@@ -143,10 +147,15 @@ local function NewCraftPreview(stage)
     return preview
 end
 
+local function SamplePipAt(i)
+    return i / SAMPLE_COUNT
+end
+
 local function PaintCraftPreview(preview)
     local Look = P.CraftTimerLook
     Look.Style(preview)
     Look.Fill(preview, SAMPLE_ICON, SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT)
+    Look.Pips(preview, SAMPLE_COUNT, SAMPLE_DONE, SamplePipAt)
     Look.Progress(preview, SAMPLE_SHARE, SAMPLE_LEFT)
 end
 
@@ -162,6 +171,7 @@ page:Card({
     help = "What Naowh's profession window adds to each recipe: the ones you have not learned yet, your next "
         .. "rank, and how many of each reagent you have.",
     search = "filter favorites favourites have materials skill-up skill up chance sort plan level leveling profitable boe "
+        .. "sale value auction disenchant vendor "
         .. "bop bind on equip pickup "
         .. "star right-click right click track recipe create all bags full chat link shift ctrl click",
     summary = RecipeSummary,
@@ -175,6 +185,9 @@ page:Card({
         { key = "skillUpPlanLater", label = "Plan Recipes You Can Train Later", toggle = true, needs = PlanOn,
           why = "Needs Skill-up Plan and Unlearned Recipes",
           help = "Also plans trainer recipes you will be able to learn on the way to your cap." },
+        { key = "skillUpPlanBest", label = "Plan by Best Sale Price", toggle = true, needs = PlanValueOn,
+          why = "Needs Skill-up Plan",
+          help = "Values each craft at the best of its auction, disenchant and vendor prices." },
         { key = "recipeFinder", label = "Unlearned Recipes", toggle = true, needs = On, why = TEXT_OFF,
           help = "Lists the recipes you have not learned yet below your own. Click one to see the skill it "
               .. "needs, what it costs and where it comes from: the nearest trainers, the vendor selling its "
@@ -294,9 +307,14 @@ page:Card({
         { key = "shoppingVendor", label = "Vendor Items on Shopping List", toggle = true, needs = ShoppingOn,
           why = "Needs Shopping List",
           help = "Lists materials vendors sell under Buy from Vendor, with Buy buttons beside the merchant." },
+        { key = "makeReagents", label = "Make Your Own Reagents", toggle = true, needs = ShoppingOn,
+          why = "Needs Shopping List",
+          help = "Plans and prices every reagent you can craft as made from its parts, even when buying costs less." },
         { key = "reagentUses", label = "Reagents", toggle = true, needs = ShoppingOn,
           why = "Needs Shopping List",
           help = "A Reagents button beside Shopping List: what each reagent makes, and whether to craft or sell it." },
+        { key = "altProfessions", label = "Your Alts' Professions", toggle = true, needs = PadFree, why = PadWhy,
+          help = "An Alts button opens your other characters' professions, once each has opened them with this on." },
         Group("Vendors"),
         { key = "vendorMaterials", label = "Crafts with Vendor Buys", toggle = true, needs = On,
           why = TEXT_OFF,

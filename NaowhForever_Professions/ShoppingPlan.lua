@@ -103,6 +103,10 @@ local function VendorOn()
     return P.Settings.Get("shoppingVendor")
 end
 
+local function MakeOwn()
+    return P.Settings.Get("shoppingList") and P.Settings.Get("makeReagents")
+end
+
 local function SkipVendor(item)
     local api = ns.ProfWindowAPI
     return not VendorOn() and api and api.IsVendorItem(item)
@@ -132,6 +136,7 @@ local Cheapest
 local function PartsCost(m, plan, depth)
     local total = 0
     for part, per in pairs(m.need) do
+        if plan.busy[part] and MakeOwn() then return nil end
         local c = plan.owned[part] and 0 or Cheapest(part, plan, depth + 1)
         if not c then return nil end
         total = total + c * per
@@ -147,7 +152,7 @@ function Cheapest(item, plan, depth, ignoreKeep)
         plan.busy[item] = true
         local total = PartsCost(m, plan, depth)
         plan.busy[item] = nil
-        if total and (not bought or total / m.made < bought) then cost, make = total / m.made, true end
+        if total and (MakeOwn() or not bought or total / m.made < bought) then cost, make = total / m.made, true end
         if make and not ignoreKeep then plan.craft[item] = total end
     end
     if not ignoreKeep then plan.cost[item], plan.make[item] = cost or false, make end
@@ -212,7 +217,7 @@ local function PlanItem(item, qty, depth)
     local _, make = Cheapest(item, shopPlan, 0)
     local m, price, craft = shopPlan.makes[item], BuyPrice(item), shopPlan.craft[item]
     local crafts = m and math.ceil(qty / m.made)
-    if make and price and craft and crafts * craft >= qty * price then make = false end
+    if make and price and craft and crafts * craft >= qty * price and not MakeOwn() then make = false end
     if not (make and depth < MAX_DEPTH) then
         buy[item] = (buy[item] or 0) + qty
         return
@@ -339,23 +344,37 @@ local function Estimate(materials, unpriced, vendorMaterials)
         missing > 0 and TEXT_MISSING:format(missing, unpriced) or "")
 end
 
-local function Needs(recipeID)
-    local api = ns.ProfWindowAPI
-    local out, owned = {}, api.Owned()
-    local ok, reagents = pcall(api.Reagents, recipeID)
-    for _, r in ipairs(ok and reagents or EMPTY) do
-        if not owned[r.itemID] and not SkipVendor(r.itemID) then out[r.itemID] = r.need end
+local function LiveReagents(recipeID)
+    local ok, reagents = pcall(ns.ProfWindowAPI.Reagents, recipeID)
+    if ok and reagents and #reagents > 0 then return reagents end
+end
+
+local function Needs(recipeID, saved)
+    local out, owned = {}, ns.ProfWindowAPI.Owned()
+    local reagents = LiveReagents(recipeID)
+    if reagents then
+        for _, r in ipairs(reagents) do
+            if not owned[r.itemID] and not SkipVendor(r.itemID) then out[r.itemID] = r.need end
+        end
+        return out
+    end
+    for item, per in pairs(saved or EMPTY) do
+        if not owned[item] and not SkipVendor(item) then out[item] = per end
     end
     return out
 end
 
-local function HasNeeds(recipeID)
-    local api = ns.ProfWindowAPI
-    local owned = api.Owned()
-    local ok, reagents = pcall(api.Reagents, recipeID)
-    if not ok then return false end
-    for _, r in ipairs(reagents) do
-        if not owned[r.itemID] and not SkipVendor(r.itemID) then return true end
+local function HasNeeds(recipeID, saved)
+    local owned = ns.ProfWindowAPI.Owned()
+    local reagents = LiveReagents(recipeID)
+    if reagents then
+        for _, r in ipairs(reagents) do
+            if not owned[r.itemID] and not SkipVendor(r.itemID) then return true end
+        end
+        return false
+    end
+    for item in pairs(saved or EMPTY) do
+        if not owned[item] and not SkipVendor(item) then return true end
     end
     return false
 end
@@ -380,7 +399,7 @@ local function OnChange(fn)
 end
 
 local function Add(info, crafts, got, quiet, fromQueue, defer)
-    local need = Needs(info.recipeID)
+    local need = Needs(info.recipeID, info.need)
     if next(need) == nil then return false end
     local list = List()
     local craft = list[info.recipeID]
@@ -480,6 +499,7 @@ Shopping.BuyPrice = BuyPrice
 Shopping.VendorPrice = VendorPrice
 Shopping.BuyFromVendor = BuyFromVendor
 Shopping.Cheapest = Cheapest
+Shopping.MakeOwn = MakeOwn
 Shopping.Materials = Materials
 Shopping.VendorMaterials = VendorMaterials
 Shopping.Drop = Drop

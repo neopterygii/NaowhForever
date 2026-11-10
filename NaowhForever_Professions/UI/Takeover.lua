@@ -11,12 +11,14 @@ local Style = P.Style
 local STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG" }
 local FALLBACK_STRATA = "HIGH"
 local TABS_DROP = -60
+local FIT_SLACK = 1
 local FLIP = { LEFT = "RIGHT", RIGHT = "LEFT", TOPLEFT = "TOPRIGHT", TOPRIGHT = "TOPLEFT",
     BOTTOMLEFT = "BOTTOMRIGHT", BOTTOMRIGHT = "BOTTOMLEFT" }
 local UNLEARN_GAP = 6
 local UNLEARN_ATLAS = "Profession-button-red-crossmark"
 local UNLEARN_FALLBACK = "Interface/RAIDFRAME/ReadyCheck-NotReady"
 local UNLEARN_SIZE = 20
+local TAB_OUTLINE_ATLAS, TAB_OUTLINE_SUBLEVEL = "common-sidetab-hover", 7
 local CARD_LEVEL, UNLEARN_LEVEL = 3, 10
 local RANK_INSET = 2
 local BURST = 0.1
@@ -33,9 +35,10 @@ local EVENTS = { "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDA
     "PLAYER_REGEN_DISABLED", "PLAYERBANKSLOTS_CHANGED", "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED",
     "TRACKED_RECIPE_UPDATE", "GROUP_ROSTER_UPDATE", "TRADE_SKILL_FAVORITES_CHANGED" }
 local REDRAW_KEYS = { vendorMaterials = true, bagReagents = true, bankReagents = true, ahSearch = true,
-    skillThresholds = true, skillUpChances = true, skillUpPlan = true, skillUpPlanLater = true, learnedRecipeVendors = true,
+    skillThresholds = true, skillUpChances = true, skillUpPlan = true, skillUpPlanLater = true, skillUpPlanBest = true,
+    learnedRecipeVendors = true,
     craftProfit = true, craftProfitList = true, buyMaterials = true, buyVendor = true, craftOrders = true,
-    orderTip = true, ownedAuctions = true }
+    orderTip = true, ownedAuctions = true, makeReagents = true }
 local PROFESSIONS_ADDON = "Blizzard_Professions"
 
 local EMPTY = {}
@@ -64,8 +67,17 @@ local function NextStrata(strata)
 end
 
 local function OutlineTab(tab, on)
-    if on and not outlines[tab] then outlines[tab] = ns.Border(tab, ns.THEME.accent) end
-    if outlines[tab] then outlines[tab]._frame:SetShown(on) end
+    local outline = outlines[tab]
+    if on and not outline then
+        local accent = ns.THEME.accent
+        outline = tab:CreateTexture(nil, "ARTWORK", nil, TAB_OUTLINE_SUBLEVEL)
+        outline:SetAtlas(TAB_OUTLINE_ATLAS, true)
+        outline:SetPoint("CENTER")
+        outline:SetDesaturated(true)
+        outline:SetVertexColor(accent.r, accent.g, accent.b)
+        outlines[tab] = outline
+    end
+    if outline then outline:SetShown(on) end
 end
 
 local function ShowUnlearn(button)
@@ -312,14 +324,38 @@ function Drag.Save()
     S.Set("windowPos", { x = win:GetLeft(), y = win:GetTop() })
 end
 
+local function Stretch(frame, scale, left, right, bottom, top)
+    if not (frame and frame:IsShown()) then return left, right, bottom, top end
+    local l, b = frame:GetLeft(), frame:GetBottom()
+    if not (l and b) then return left, right, bottom, top end
+    local s = frame:GetEffectiveScale() / scale
+    return math.min(left, l * s), math.max(right, frame:GetRight() * s),
+        math.min(bottom, b * s), math.max(top, frame:GetTop() * s)
+end
+
+local function Shift(low, high, size)
+    if low < 0 then return -low end
+    if high > size then return math.max(size - high, -low) end
+    return 0
+end
+
 function Drag.Fit()
-    if not tabsLeft then return end
-    local head = ProfessionsFrame.ProfessionsOverviewTab
-    local left = win:GetLeft()
-    if not (head and left) then return end
-    local room = head:GetWidth() * head:GetEffectiveScale() / win:GetEffectiveScale()
-    if left >= room then return end
-    S.Set("windowPos", { x = room, y = win:GetTop() })
+    if not (win and win:IsShown() and savedTabPoints) or Drag.pending then return end
+    local winLeft, winTop = win:GetLeft(), win:GetTop()
+    if not (winLeft and winTop) then return end
+    local scale = win:GetEffectiveScale()
+    local left, right, bottom, top = math.huge, -math.huge, math.huge, -math.huge
+    left, right, bottom, top = Stretch(ProfessionsFrame.ProfessionsOverviewTab, scale, left, right, bottom, top)
+    for _, tab in ipairs(ProfessionsFrame.rightProfessionTabs or EMPTY) do
+        left, right, bottom, top = Stretch(tab, scale, left, right, bottom, top)
+    end
+    left, right, bottom, top = Stretch(ns.DockedShoppingList(), scale, left, right, bottom, top)
+    if left == math.huge then return end
+    local screen = UIParent:GetEffectiveScale() / scale
+    local dx = Shift(left, right, UIParent:GetWidth() * screen)
+    local dy = Shift(bottom, top, UIParent:GetHeight() * screen)
+    if math.abs(dx) < FIT_SLACK and math.abs(dy) < FIT_SLACK then return end
+    S.Set("windowPos", { x = winLeft + dx, y = winTop + dy })
     Drag.Follow()
 end
 
@@ -371,23 +407,25 @@ local function Activate(mode)
     pf:SetAlpha(0)
     win:SetAlpha(1)
     local linked = mode == "linked"
-    local wide = linked
-    local width = wide and Style.WINDOW_W + Style.ORDER_W + Style.PAD or Style.WINDOW_W
+    local orders = linked and not R.Alt()
+    local width = orders and Style.WINDOW_W + Style.ORDER_W + Style.PAD or Style.WINDOW_W
+    local wasWidth = win:GetWidth()
     if not InCombatLockdown() then
         win:SetSize(math.max(width, pf:GetWidth()), math.max(Style.MIN_H, pf:GetHeight()))
     end
     if not win:IsShown() or linked ~= W.linked or mode ~= lastMode then W.stale = true end
     lastMode = mode
-    if not win:IsShown() or linked ~= W.linked then
+    local opening = not win:IsShown() or linked ~= W.linked or orders ~= W.orders
+    if opening then
         W.selectedID, W.selectedUnlearned, W.offset = nil, nil, 0
         win:Show()
         Drag.Follow()
-        Drag.Fit()
     end
-    W.linked = linked
+    W.linked, W.orders = linked, orders
     win.rank:SetWidth(width - Style.PAD * 2 - RANK_INSET * 2)
-    win.order:SetShown(linked)
+    win.order:SetShown(orders)
     DockTabs(true)
+    if opening or win:GetWidth() ~= wasWidth then Drag.Fit() end
     local book = mode == "book"
     ShowParts(book, linked)
     if book then win.rankBanner:Hide() end
@@ -488,7 +526,10 @@ local function OnEvent(_, event, name, loaded)
         return
     elseif event == "PLAYER_REGEN_ENABLED" then
         if bookPending ~= nil then DockBook(bookPending) end
-        if Drag.pending then Drag.Follow() end
+        if Drag.pending then
+            Drag.Follow()
+            Drag.Fit()
+        end
     end
     if not hooked and ProfessionsFrame then HookBlizzard() end
     if REREAD[event] then W.stale = true end
@@ -511,6 +552,7 @@ local function OnSettingChanged(key)
 end
 
 ns.ProfWindowRefresh = Refresh
+ns.ProfWindowFit = Drag.Fit
 
 events:SetScript("OnEvent", OnEvent)
 hooksecurefunc(S, "Set", OnSettingChanged)

@@ -6,16 +6,17 @@ local F = ns.FEATURES.professions
 local S = ns.UI.ModuleSettings("professions", {
     enabled = F.enabled,
     skillThresholds = F.skillThresholds, skillUpChances = F.skillUpChances, sortSkillUps = false,
-    skillUpPlan = F.skillUpPlan, skillUpPlanLater = false, learnedRecipeVendors = F.learnedRecipeVendors,
+    skillUpPlan = F.skillUpPlan, skillUpPlanLater = false, skillUpPlanBest = false,
+    learnedRecipeVendors = F.learnedRecipeVendors,
     recipeFinder = F.recipeFinder, rankAlert = F.rankAlert, bagReagents = F.bagReagents,
     bankReagents = F.bankReagents, vendorMaterials = F.vendorMaterials,
-    craftOrders = F.craftOrders, orderTip = 10,
+    craftOrders = F.craftOrders, orderTip = 10, altProfessions = F.altProfessions,
     craftTimer = F.craftTimer, craftTimerShowCastBar = F.craftTimerShowCastBar,
     craftTimerFont = "", craftTimerFontSize = 14, craftTimerOutline = "OUTLINE", craftTimerTexture = "",
     craftTimerBgAlpha = 0.9,
     shoppingList = F.shoppingList, shoppingListDock = F.shoppingListDock,
     craftQueue = F.craftQueue,
-    shoppingVendor = F.shoppingVendor, reagentUses = F.reagentUses,
+    shoppingVendor = F.shoppingVendor, makeReagents = F.makeReagents, reagentUses = F.reagentUses,
     trainFavorites = F.trainFavorites, searchFavoritesAH = F.searchFavoritesAH,
     manualPatternScan = F.manualPatternScan, favoriteVendorMarks = F.favoriteVendorMarks,
     gatherReminder = F.gatherReminder, gatherInInstances = false, gatherIconSize = 40, gatherFish = false,
@@ -39,7 +40,7 @@ ns.ProfBagChanges = 0
 
 local P = {
     Settings = S,
-    State = { offset = 0, query = "", linked = false, stale = true, listChanged = false },
+    State = { offset = 0, query = "", linked = false, orders = false, stale = true, listChanged = false },
 }
 ns.Professions = P
 

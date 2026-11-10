@@ -162,6 +162,14 @@ SL.AddItem(FLUX, 2)
 auctionBuy, _, vendorBuy = Plan()
 check("off: a manually added vendor item stays with the auction house",
     Only(auctionBuy, FLUX, 2) and Empty(vendorBuy))
+check("off: a craft added with another character's saved materials leaves out vendor ones too",
+    SL.Add({ recipeID = 30, name = "c30", need = { [FLUX] = 1, [BAR] = 3 } }, 1, nil, true)
+    and SL.List()[30].need[BAR] == 3 and SL.List()[30].need[FLUX] == nil)
+check("off: saved materials with something left to buy count as needs", SL.HasNeeds(30, { [BAR] = 3 }))
+check("off: saved vendor-only materials leave nothing to add", not SL.HasNeeds(30, { [FLUX] = 1 }))
+recipes[31] = { need = { [ORE] = 4 } }
+check("off: a recipe this character can read uses its live materials over the saved ones",
+    SL.Add({ recipeID = 31, name = "c31", need = { [ORE] = 1 } }, 1, nil, true) and SL.List()[31].need[ORE] == 4)
 SL.Clear()
 profSettings.shoppingVendor = true
 
@@ -245,6 +253,51 @@ SL.List()[10] = nil; Craft(10, { [BAR] = 4 })
 local materials, made4, plan = SL.Materials()
 check("4 bars: 2 crafts made", Only(made4, BAR, 4) and materials[1].item == ORE and materials[1].qty == 8)
 check("and it saves 40s, not per bar", plan.saves[BAR] == 4000 and plan.planned[BAR])
+
+-- Make Your Own Reagents: what you know the recipe for is made, even when buying costs less.
+profSettings.shoppingList, profSettings.makeReagents = true, true
+Reset(); Learned({ [BAR] = SMELT }); Craft(10, { [BAR] = 20 })
+prices[BAR] = 15
+buy, made = Plan()
+check("own reagents: the bars are made though buying them costs less", Only(buy, ORE, 40) and Only(made, BAR, 20))
+local _, _, ownPlan = SL.Materials()
+check("own reagents: the row's saving is the extra cost, below zero", ownPlan.saves[BAR] == -100)
+SL.Keep()[BAR] = true
+buy, made = Plan()
+check("own reagents: Buy on the row still buys the bars", Only(buy, BAR, 20) and Empty(made))
+_, _, ownPlan = SL.Materials()
+check("own reagents: and Make is offered back", select(2, SL.Cheapest(BAR, ownPlan, 0, true)))
+Reset()
+prices[BAR], prices[ORE] = 5000, 2000
+Learned({ [BAR] = { recipe = 2659, made = 2, need = { [ORE] = 4 } } })
+Craft(10, { [BAR] = 3 })
+buy, made = Plan()
+check("own reagents: 3 bars are 2 whole crafts", Only(buy, ORE, 8) and Only(made, BAR, 4))
+Reset(); Learned({ [BAR] = SMELT }); Craft(10, { [BAR] = 5 })
+prices[ORE] = nil
+buy, made = Plan()
+check("own reagents: parts with no price are not planned", Only(buy, BAR, 5) and Empty(made))
+
+-- Two items made from each other: one is made, its part bought, never round in a loop.
+local LESSER, GREATER = 8, 9
+local function Essences()
+    Learned({ [GREATER] = { recipe = 200, made = 1, need = { [LESSER] = 3 } },
+        [LESSER] = { recipe = 201, made = 3, need = { [GREATER] = 1 } } })
+    prices[LESSER], prices[GREATER] = 10, 40
+end
+Reset(); Essences(); Craft(10, { [GREATER] = 1 })
+buy, made = Plan()
+check("own reagents: the greater is made from lesser bought", Only(buy, LESSER, 3) and Only(made, GREATER, 1))
+Reset(); Essences(); Craft(10, { [LESSER] = 3 })
+buy, made = Plan()
+check("own reagents: the lesser are made from a greater bought", Only(buy, GREATER, 1) and Only(made, LESSER, 3))
+
+profSettings.shoppingList = nil
+Reset(); Learned({ [BAR] = SMELT }); Craft(10, { [BAR] = 20 })
+prices[BAR] = 15
+buy, made = Plan()
+check("own reagents need the Shopping List on", Only(buy, BAR, 20) and Empty(made))
+profSettings.makeReagents = nil
 
 -- Learn: only your own profession, and what has a cooldown.
 Reset(); Learned({})

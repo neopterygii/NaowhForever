@@ -50,6 +50,10 @@ local function DealTooltipsOn()
     return DealsOn() and Deal("disenchantDealsTooltip")
 end
 
+local function ShareFree()
+    return ns.PriceShareFree == nil or ns.PriceShareFree()
+end
+
 local function PriceRows()
     local qol = ns.QoLSettings
     local rows = {
@@ -65,6 +69,9 @@ local function PriceRows()
         { key = "ahCapture", label = "Capture Other Addons' Scans", toggle = true, store = qol,
           help = "Also keeps the prices from full auction house scans that other addons start, "
               .. "such as Auctionator or TSM." },
+        { key = "ahShare", label = "Prices for Other Addons", toggle = true, store = qol,
+          needs = ShareFree, why = "Auctionator is installed",
+          help = "Addons that read Auctionator's prices get these prices while Auctionator is not installed." },
     }
     local deals = ns.ProfessionSettings
     if not deals then return rows end
@@ -127,7 +134,7 @@ page:Card({
 
 page:Card({
     id = "prices", name = "Prices & Deals", order = ORDER_PRICES,
-    help = "Auction prices and Disenchant Deals, the same settings as in QoL and Professions.",
+    help = "Auction prices and Disenchant Deals, the same settings as on Bags, Loot & Mail and Professions.",
     search = "auction house scan prices tooltip waylaid crate capture disenchant deals enchanting",
     rows = PriceRows,
 })

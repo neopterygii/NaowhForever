@@ -22,8 +22,8 @@ local TEXT_ABOUT = ns.L("about %s")
 local TEXT_AUCTION = ns.L("Auction")
 local TEXT_VENDOR = ns.L("Vendor")
 local TEXT_EACH = ns.L("%s each")
-local TEXT_FOR = ns.L("%s for %d")
-local TEXT_EACH_FOR = ns.L("%s each, %s for %d")
+local TEXT_EACH_STACK = ns.L("%s each, %s (stack)")
+local TEXT_COUNT = ns.L("%s x%d")
 local TEXT_BEST = { vendor = ns.L("Best: Vendor"), auction = ns.L("Best: Auction"),
     disenchant = ns.L("Best: Disenchant") }
 local TEXT_BETTER = { vendor = ns.L("Better: Vendor"), auction = ns.L("Better: Auction"),
@@ -86,12 +86,16 @@ local function Disenchant(link, itemID)
     return gross and values.AfterCut(gross), required
 end
 
-local function Price(each, stack)
+local function Price(each, stack, how)
     if stack == 1 then return Coins(each) end
-    local how = S.Get("tooltipStack")
     if how == EACH then return TEXT_EACH:format(Coins(each)) end
-    if how == STACK then return TEXT_FOR:format(Coins(each * stack), stack) end
-    return TEXT_EACH_FOR:format(Coins(each), Coins(each * stack), stack)
+    if how == STACK then return Coins(each * stack) end
+    return TEXT_EACH_STACK:format(Coins(each), Coins(each * stack))
+end
+
+local function Counted(text, stack, how)
+    if stack == 1 or how == EACH then return text end
+    return TEXT_COUNT:format(text, stack)
 end
 
 local function AddBest(info, each, vendor, disenchant, required, stack)
@@ -142,8 +146,9 @@ local function CraftLines(itemID)
 end
 
 local function CompactLines(each, vendor, disenchant, stack)
-    if each then Add(TEXT_AUCTION, Price(each, stack)) end
-    if vendor and vendor > 0 then Add(TEXT_VENDOR, Price(vendor, stack)) end
+    local how = S.Get("tooltipStack")
+    if each then Add(Counted(TEXT_AUCTION, stack, how), Price(each, stack, how)) end
+    if vendor and vendor > 0 then Add(Counted(TEXT_VENDOR, stack, how), Price(vendor, stack, how)) end
     if disenchant then Add(TEXT_DISENCHANT, TEXT_ABOUT:format(Coins(disenchant))) end
 end
 

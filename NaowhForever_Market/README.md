@@ -48,7 +48,7 @@ NaowhForever_Market/
     Farm.lua         the Farm page: the zone list, the zone's map, its loop and the picked item
     Runs.lua         the Last Run page: the run's gold over time, its haul, earlier runs
     Sell.lua         the Sell page: the item, its listings, the post line, Up Next
-    Crafts.lua       the Crafts page: recipes, who knows them, materials, gains, Add to Queue
+    Crafts.lua       the Crafts page: recipes, who knows them, materials, gains, Add to Queue and Add to List
     Buy.lua          the Buy page: the Shopping List, the category and search, the listings, the buy button
     Auctions.lua     the My Auctions page: your auctions, their status, Cancel and Cancel Undercut
     Reagents.lua     the Reagents page: Professions' Reagents list under a search
@@ -66,6 +66,8 @@ NaowhForever_Market/
   size, anchored to its top left, so nothing of Blizzard's can be clicked through ours. Blizzard's tabs,
   and QoL's Scan Prices button beside them, hang under its bottom edge, so ours reaches
   `BLIZZARD_TABS` further down to cover them too.
+- The Market button that comes back from Blizzard's window sits above its top right corner, not beside
+  its tabs: another addon's tabs push Scan Prices and its scan line along that row into the corner.
 - At an auctioneer ours does not move: Blizzard's window is placed by the panel manager and cannot be
   dragged either, and moving it from addon code would fight that placing. Away from one it opens where
   you last dragged it (`marketWindow`, placed by the shared `Parts.Place`), one strata up (`HIGH`), and
@@ -216,6 +218,13 @@ NaowhForever_Market/
 - Add to Queue goes to Professions' Craft Queue with `CraftQueue.AddWithShopping`, as its own Add does,
   only for your own recipes and while its Craft Queue is on. At an auctioneer, Buy opens the Buy page on
   the first material you are short of.
+- An alt's row has Add to List instead, while Professions' Shopping List is on: the Craft Queue is for
+  crafting, which the alt does, but a bank character can buy the alt's materials. It goes through
+  `Shopping.Add`, one craft a click as the profession window's Add to List starts at. It reads the recipe's
+  materials live first, as the Craft Queue does, and falls back to the ones the alt saved (`need`) when this
+  character cannot read a recipe it does not know. The button shows only when the craft leaves something to
+  buy (`Shopping.HasNeeds`). Away from an auctioneer it opens the Shopping List; at one the list already
+  shows beside the auction house.
 - The Reagents page is Professions' own Reagents list (`P.ReagentList`), so both say the same; without
   Professions loaded and on, it says to turn it on. It names an alt from The Market's list
   (`marketCharacters`) when that alt is on this realm and faction.
@@ -303,7 +312,9 @@ NaowhForever_Market/
 - Stack Prices reads a stack in your bags for each item, the whole stack, or both; away from your bags an
   item counts one. Both is the old split: Auction Prices' line per item, The Market's Stack of N under
   it. Each Item drops Stack of N; Whole Stack keeps it and Auction Prices leaves its line off on that
-  stack. Compact puts the two on one line ("10s each, 2g for 20") and a single item plain.
+  stack. Compact puts the two on one line ("Auction x20", "10s each, 2g") and a single item plain. The
+  count sits beside the label, so the prices line up on the right for a glance; Each Item has no count,
+  since its price is for one.
 - A price shows once: whenever The Market's lines carry the auction price (Compact, or Whole Stack on a
   stack), `Market.ShowsPrice` tells QoL's Auction Prices to leave its own line off. QoL reads it only
   when The Market is loaded, and it answers no until The Market's post-call is in, so Auction Prices
@@ -346,7 +357,7 @@ In game, at an auctioneer, with The Market on:
 3. Space posts it, the next item comes up, and the bar's total counts up.
 4. Up and Down step the price to just under the next listing; typing a price makes it yours.
 5. Right-clicking a bag item picks it.
-6. The eye button shows Blizzard's window; The Market button under it comes back. Professions' Shopping
+6. The eye button shows Blizzard's window; The Market button above it comes back. Professions' Shopping
    List (and Search Favorites AH, Disenchant Deals) sits beside whichever window shows, never on top of ours.
 7. Escape or the X closes the auction house.
 8. My Auctions lists your auctions, checks each item, and marks the undercut ones; a commodity
@@ -422,8 +433,9 @@ Away from the auction house:
     no The Market header and no Market Price line above them; a green adds Disenchant. Back on
     Detailed, the tooltip is as it was.
 49. Stack Prices on the same stack: Each Item, Whole Stack and Both change Compact's Auction and Vendor
-    lines. On Detailed, Whole Stack shows Stack of N and no Market Price line, Each Item the Market Price
-    line and no Stack of N, and Both the two.
+    lines. Whole Stack and Both read "Auction x20" on the left with the stack's price on the right; Each
+    Item reads "Auction" with no count. On Detailed, Whole Stack shows Stack of N and no Market Price
+    line, Each Item the Market Price line and no Stack of N, and Both the two.
 50. Best Way to Sell on: the cloth reads Best: Auction (or Vendor, when a vendor pays more after the cut)
     and by how much. A green reads Best: Disenchant on an enchanter who can disenchant it when its
     materials fetch more, never on a character without Enchanting; an item with no scan price reads
@@ -433,3 +445,7 @@ Away from the auction house:
 52. The Market's settings page has Key Binding: set a key there and it shows the same in the game's Key
     Bindings menu (Open The Market). Away from an auctioneer the key opens The Market and a second press
     closes it; at an auctioneer the second press closes the auction house too, as the window's X does.
+53. With Professions' Shopping List on, on a character whose alt (same realm and faction) has opened a
+    profession: Crafts' All Recipes shows Add to List on the alt's rows, never Add to Queue. A click adds one
+    craft's materials, with a chat line; away from an auctioneer the Shopping List opens, at one its panel
+    shows beside the auction house. A second click makes it two crafts. Your own rows are unchanged.

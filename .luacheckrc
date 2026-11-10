@@ -30,7 +30,7 @@ globals = {
     "NaowhForeverQuestGiverPinMixin",
     "NaowhForeverRarePinMixin",
     "SlashCmdList", "StaticPopupDialogs",
-    "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes",
+    "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes", "Auctionator",
 }
 
 -- The game's API and constants the addon reads. A name missing here is flagged, which is
@@ -137,7 +137,7 @@ read_globals = {
     "StaticPopup1", "StaticPopup1Button1", "StaticPopup_FindVisible", "StaticPopup_Hide", "StaticPopup_Show", "StatusTrackingBarInfo",
     "StatusTrackingBarManager", "strlower", "strsplit", "strsub", "strtrim", "strupper",
     "SubZoneTextFrame", "TaxiGetNodeSlot", "TaxiNodeGetType", "TaxiNodeName", "TaxiNodeOnButtonEnter", "TaxiRequestEarlyLanding",
-    "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "TomTom",
+    "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "TomTom", "OpenMapAPI",
     "TooltipDataProcessor", "TooltipUtil", "TRADE_ENCHANT_SLOT", "TRADE_SKILLS", "TradeFrame", "TradeRecipientItem7ItemButton", "TSM_API", "UIErrorsFrame", "UiMapPoint",
     "TimerTracker", "UIParent", "UIWidgetTopCenterContainerFrame", "UNKNOWNOBJECT", "UnitAffectingCombat", "UnitAttackSpeed", "UnitCanAttack",
     "SpellIsTargeting", "SpellStopTargeting", "UnitCastingDuration", "UnitCastingInfo", "UnitChannelDuration", "UnitChannelInfo",
